@@ -10,6 +10,14 @@ const CURRENCY_META = {
   RUB: { name: "Russian Ruble", symbol: "RUB" },
 };
 
+function isValidEmail(value) {
+  if (!value) {
+    return false;
+  }
+
+  return /^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$/.test(String(value));
+}
+
 async function syncCurrenciesFromApi() {
   const apiKey = process.env.EXCHANGE_RATE_API_KEY;
   const baseUrl = process.env.EXCHANGE_RATE_BASE_URL;
@@ -76,29 +84,63 @@ async function ensureBaseCurrencies() {
 
 async function main() {
   await ensureBaseCurrencies();
-  await prisma.siteSetting.upsert({
-    where: { id: "global" },
-    update: {},
-    create: {
-      id: "global",
-      siteName: "Finance Tracker",
-      siteTagline: "Personal finance command center",
-      siteDescription: "Personal finance tracker built with Next.js, Prisma, and MySQL",
-      seoTitle: "Finance Tracker",
-      seoDescription: "Personal finance tracker built with Next.js, Prisma, and MySQL",
-      seoKeywords: "finance tracker, budgeting, expenses, income, wallet, reports",
-      supportEmail: process.env.SMTP_FROM || process.env.SMTP_USER || null,
-      siteUrl: process.env.NEXTAUTH_URL || "http://localhost:3000",
-      smtpHost: process.env.SMTP_HOST || null,
-      smtpPort: Number(process.env.SMTP_PORT || 587),
-      smtpSecure: process.env.SMTP_SECURE === "true",
-      smtpUser: process.env.SMTP_USER || null,
-      smtpPass: process.env.SMTP_PASS || null,
-      smtpFrom: process.env.SMTP_FROM || null,
-      requireEmailVerification: true,
-      verificationCodeExpiryMinutes: 15,
-    },
-  });
+  await prisma.$executeRaw`
+    INSERT INTO site_settings (
+      id,
+      site_name,
+      site_tagline,
+      site_description,
+      seo_title,
+      seo_description,
+      seo_keywords,
+      support_email,
+      site_url,
+      smtp_host,
+      smtp_port,
+      smtp_secure,
+      smtp_user,
+      smtp_pass,
+      smtp_from,
+      require_email_verification,
+      verification_code_expiry_minutes
+    ) VALUES (
+      ${"global"},
+      ${"Finance Tracker"},
+      ${"Personal finance command center"},
+      ${"Personal finance tracker built with Next.js, Prisma, and MySQL"},
+      ${"Finance Tracker"},
+      ${"Personal finance tracker built with Next.js, Prisma, and MySQL"},
+      ${"finance tracker, budgeting, expenses, income, wallet, reports"},
+      ${isValidEmail(process.env.SMTP_USER) ? process.env.SMTP_USER : null},
+      ${process.env.NEXTAUTH_URL || "http://localhost:3000"},
+      ${process.env.SMTP_HOST || null},
+      ${Number(process.env.SMTP_PORT || 587)},
+      ${process.env.SMTP_SECURE === "true"},
+      ${process.env.SMTP_USER || null},
+      ${process.env.SMTP_PASS || null},
+      ${process.env.SMTP_FROM || null},
+      ${true},
+      ${15}
+    )
+    ON DUPLICATE KEY UPDATE
+      site_name = VALUES(site_name),
+      site_tagline = VALUES(site_tagline),
+      site_description = VALUES(site_description),
+      seo_title = VALUES(seo_title),
+      seo_description = VALUES(seo_description),
+      seo_keywords = VALUES(seo_keywords),
+      support_email = VALUES(support_email),
+      site_url = VALUES(site_url),
+      smtp_host = VALUES(smtp_host),
+      smtp_port = VALUES(smtp_port),
+      smtp_secure = VALUES(smtp_secure),
+      smtp_user = VALUES(smtp_user),
+      smtp_pass = VALUES(smtp_pass),
+      smtp_from = VALUES(smtp_from),
+      require_email_verification = VALUES(require_email_verification),
+      verification_code_expiry_minutes = VALUES(verification_code_expiry_minutes),
+      updated_at = NOW()
+  `;
 
   try {
     await syncCurrenciesFromApi();

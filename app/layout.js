@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import "./globals.css";
+import { PwaRegistration } from "@/components/pwa-registration";
 import { getPublicSiteSettings } from "@/lib/site-settings";
 
 export async function generateMetadata() {
@@ -19,6 +20,7 @@ export async function generateMetadata() {
     description,
     keywords,
     metadataBase: new URL(siteSettings.siteUrl || process.env.NEXTAUTH_URL || "http://localhost:3000"),
+    manifest: "/manifest.webmanifest",
     icons: siteSettings.iconUrl
       ? {
           icon: siteSettings.iconUrl,
@@ -57,7 +59,10 @@ export default async function RootLayout({ children }) {
         <script dangerouslySetInnerHTML={{ __html: themeInitializationScript(theme) }} />
         {siteSettings.iconUrl ? <link rel="icon" href={siteSettings.iconUrl} /> : null}
       </head>
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        <PwaRegistration />
+        {children}
+      </body>
     </html>
   );
 }

@@ -1,4 +1,5 @@
 import { LiveUpdatesProvider } from "@/components/dashboard/live-updates-provider";
+import { PwaInstallBanner } from "@/components/dashboard/pwa-install-banner";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { Topbar } from "@/components/dashboard/topbar";
 import { ToastProvider } from "@/components/ui/toast-provider";
@@ -16,6 +17,7 @@ export default async function DashboardLayout({ children }) {
         <main className="lg:pl-72">
           <div className="mx-auto max-w-7xl p-6 lg:p-8">
             <Topbar user={user} />
+            <PwaInstallBanner />
             {children}
           </div>
         </main>

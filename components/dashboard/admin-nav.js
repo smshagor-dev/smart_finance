@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Settings2, ShieldCheck, Users } from "lucide-react";
+import { BarChart3, FolderTree, Layers3, MessagesSquare, Settings2, ShieldCheck, Users } from "lucide-react";
 import { ADMIN_PANEL_ITEMS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -10,14 +10,31 @@ const iconMap = {
   "/dashboard/admin": ShieldCheck,
   "/dashboard/admin/users": Users,
   "/dashboard/admin/activity": BarChart3,
+  "/dashboard/admin/integrity": Layers3,
+  "/dashboard/admin/access": ShieldCheck,
+  "/dashboard/admin/finance": FolderTree,
+  "/dashboard/admin/collaboration": MessagesSquare,
+  "/dashboard/admin/platform": Layers3,
   "/dashboard/admin/site-settings": Settings2,
+};
+
+const descriptionMap = {
+  "/dashboard/admin": "Platform snapshot",
+  "/dashboard/admin/users": "Manage every account",
+  "/dashboard/admin/activity": "Track global changes",
+  "/dashboard/admin/integrity": "Incomplete and risky records",
+  "/dashboard/admin/access": "Users, sessions, and auth",
+  "/dashboard/admin/finance": "Wallets, budgets, and ledger",
+  "/dashboard/admin/collaboration": "Groups, receipts, and alerts",
+  "/dashboard/admin/platform": "Read-only config snapshot",
+  "/dashboard/admin/site-settings": "SEO, branding, SMTP, verification",
 };
 
 export function AdminNav() {
   const pathname = usePathname();
 
   return (
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
       {ADMIN_PANEL_ITEMS.map((item) => {
         const active = item.href === "/dashboard/admin" ? pathname === item.href : pathname.startsWith(item.href);
         const Icon = iconMap[item.href] || ShieldCheck;
@@ -37,15 +54,7 @@ export function AdminNav() {
               </div>
               <div>
                 <p className="text-sm font-semibold">{item.label}</p>
-                <p className={cn("text-xs", active ? "text-primary-foreground/80" : "text-slate-500")}>
-                  {item.href === "/dashboard/admin"
-                    ? "Platform snapshot"
-                    : item.href.endsWith("/users")
-                      ? "Manage every account"
-                      : item.href.endsWith("/activity")
-                        ? "Track global changes"
-                        : "SEO, branding, SMTP, verification"}
-                </p>
+                <p className={cn("text-xs", active ? "text-primary-foreground/80" : "text-slate-500")}>{descriptionMap[item.href]}</p>
               </div>
             </div>
           </Link>

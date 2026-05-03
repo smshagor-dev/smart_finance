@@ -28,10 +28,32 @@ const emptyForm = {
   verificationCodeExpiryMinutes: 15,
 };
 
+function normalizeForm(data) {
+  return {
+    ...emptyForm,
+    ...data,
+    logoUrl: data.logoUrl || "",
+    iconUrl: data.iconUrl || "",
+    supportEmail: data.supportEmail || "",
+    siteUrl: data.siteUrl || "",
+    smtpHost: data.smtpHost || "",
+    smtpUser: data.smtpUser || "",
+    smtpPass: data.smtpPass || "",
+    smtpFrom: data.smtpFrom || "",
+  };
+}
+
+const sectionFields = {
+  branding: ["siteName", "siteTagline", "siteDescription", "seoTitle", "seoDescription", "seoKeywords", "supportEmail", "siteUrl"],
+  assets: ["logoUrl", "iconUrl"],
+  smtp: ["smtpHost", "smtpPort", "smtpSecure", "smtpUser", "smtpPass", "smtpFrom"],
+  verification: ["requireEmailVerification", "verificationCodeExpiryMinutes"],
+};
+
 export function AdminSiteSettingsPage() {
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [savingSection, setSavingSection] = useState("");
   const [uploading, setUploading] = useState("");
   const toast = useToast();
 
@@ -42,18 +64,7 @@ export function AdminSiteSettingsPage() {
       .then((response) => response.json())
       .then((data) => {
         if (!active) return;
-        setForm({
-          ...emptyForm,
-          ...data,
-          logoUrl: data.logoUrl || "",
-          iconUrl: data.iconUrl || "",
-          supportEmail: data.supportEmail || "",
-          siteUrl: data.siteUrl || "",
-          smtpHost: data.smtpHost || "",
-          smtpUser: data.smtpUser || "",
-          smtpPass: data.smtpPass || "",
-          smtpFrom: data.smtpFrom || "",
-        });
+        setForm(normalizeForm(data));
         setLoading(false);
       });
 
@@ -87,36 +98,25 @@ export function AdminSiteSettingsPage() {
     toast.push(`${purpose === "logo" ? "Logo" : "Icon"} uploaded`);
   }
 
-  async function handleSubmit(event) {
-    event.preventDefault();
-    setSaving(true);
+  async function saveSection(section) {
+    setSavingSection(section);
+    const payload = Object.fromEntries(sectionFields[section].map((key) => [key, form[key]]));
 
     const response = await fetch("/api/admin/site-settings", {
-      method: "PUT",
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify(payload),
     });
     const data = await response.json();
-    setSaving(false);
+    setSavingSection("");
 
     if (!response.ok) {
       toast.push(data.error || "Could not save site settings", "error");
       return;
     }
 
-    setForm((current) => ({
-      ...current,
-      ...data,
-      logoUrl: data.logoUrl || "",
-      iconUrl: data.iconUrl || "",
-      supportEmail: data.supportEmail || "",
-      siteUrl: data.siteUrl || "",
-      smtpHost: data.smtpHost || "",
-      smtpUser: data.smtpUser || "",
-      smtpPass: data.smtpPass || "",
-      smtpFrom: data.smtpFrom || "",
-    }));
-    toast.push("Site settings updated");
+    setForm(normalizeForm(data));
+    toast.push("Section updated");
   }
 
   if (loading) {
@@ -124,7 +124,7 @@ export function AdminSiteSettingsPage() {
   }
 
   return (
-    <form className="space-y-6" onSubmit={handleSubmit}>
+    <div className="space-y-6">
       <Card className="p-6">
         <h3 className="text-xl font-semibold">Branding and SEO</h3>
         <div className="mt-6 grid gap-4 md:grid-cols-2">
@@ -160,6 +160,11 @@ export function AdminSiteSettingsPage() {
             <span className="mb-2 block text-sm font-medium">SEO description</span>
             <textarea className="min-h-28 w-full rounded-2xl border border-border bg-white px-4 py-3 outline-none" value={form.seoDescription} onChange={(event) => setForm((current) => ({ ...current, seoDescription: event.target.value }))} />
           </label>
+        </div>
+        <div className="mt-6 flex justify-end">
+          <Button type="button" className="min-w-40" disabled={savingSection === "branding"} onClick={() => saveSection("branding")}>
+            {savingSection === "branding" ? "Saving..." : "Save Branding"}
+          </Button>
         </div>
       </Card>
 
@@ -210,6 +215,11 @@ export function AdminSiteSettingsPage() {
             </div>
           ))}
         </div>
+        <div className="mt-6 flex justify-end">
+          <Button type="button" className="min-w-40" disabled={savingSection === "assets" || Boolean(uploading)} onClick={() => saveSection("assets")}>
+            {savingSection === "assets" ? "Saving..." : "Save Assets"}
+          </Button>
+        </div>
       </Card>
 
       <Card className="p-6">
@@ -241,6 +251,11 @@ export function AdminSiteSettingsPage() {
             <span className="text-sm font-medium">Use secure SMTP connection</span>
           </label>
         </div>
+        <div className="mt-6 flex justify-end">
+          <Button type="button" className="min-w-40" disabled={savingSection === "smtp"} onClick={() => saveSection("smtp")}>
+            {savingSection === "smtp" ? "Saving..." : "Save SMTP"}
+          </Button>
+        </div>
       </Card>
 
       <Card className="p-6">
@@ -266,13 +281,17 @@ export function AdminSiteSettingsPage() {
             />
           </label>
         </div>
+        <div className="mt-6 flex justify-end">
+          <Button
+            type="button"
+            className="min-w-40"
+            disabled={savingSection === "verification"}
+            onClick={() => saveSection("verification")}
+          >
+            {savingSection === "verification" ? "Saving..." : "Save Verification"}
+          </Button>
+        </div>
       </Card>
-
-      <div className="flex justify-end">
-        <Button type="submit" className="min-w-40" disabled={saving}>
-          {saving ? "Saving..." : "Save site settings"}
-        </Button>
-      </div>
-    </form>
+    </div>
   );
 }
