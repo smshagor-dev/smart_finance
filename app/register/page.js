@@ -11,7 +11,7 @@ export default async function RegisterPage() {
   return (
     <main className="flex min-h-screen items-center justify-center p-6">
       <Card className="grid w-full max-w-6xl overflow-hidden lg:grid-cols-[0.95fr_1.05fr]">
-        <section className="bg-[linear-gradient(180deg,#102318_0%,#173122_100%)] p-10 text-white lg:p-12">
+        <section className="hidden bg-[linear-gradient(180deg,#102318_0%,#173122_100%)] p-10 text-white lg:block lg:p-12">
           <p className="text-sm uppercase tracking-[0.3em] text-emerald-100/70">Finance Tracker</p>
           <h1 className="mt-5 text-4xl font-semibold leading-tight lg:text-5xl">Build your finance system with the right currency from day one.</h1>
           <p className="mt-5 max-w-xl text-sm leading-7 text-emerald-50/75 lg:text-base">
@@ -32,20 +32,24 @@ export default async function RegisterPage() {
 
         <section className="bg-[#f8fbf5] p-8 lg:p-12">
           <div className="mx-auto max-w-xl">
-            <p className="text-sm uppercase tracking-[0.25em] text-slate-500">Create Account</p>
-            <h2 className="mt-3 text-3xl font-semibold text-slate-950">Open your finance workspace</h2>
-            <p className="mt-2 text-sm text-slate-500">Professional onboarding with searchable default currency selection and verification-ready signup.</p>
+            <div className="hidden lg:block">
+              <p className="text-sm uppercase tracking-[0.25em] text-slate-500">Create Account</p>
+              <h2 className="mt-3 text-3xl font-semibold text-slate-950">Open your finance workspace</h2>
+              <p className="mt-2 text-sm text-slate-500">Professional onboarding with searchable default currency selection and verification-ready signup.</p>
+            </div>
 
             <div className="mt-8">
               <AuthForm mode="register" />
             </div>
 
-            <p className="mt-6 text-sm text-slate-500">
-              Already have an account?{" "}
-              <Link href="/login" className="font-medium text-primary">
-                Login
-              </Link>
-            </p>
+            <div className="hidden lg:block">
+              <p className="mt-6 text-sm text-slate-500">
+                Already have an account?{" "}
+                <Link href="/login" className="font-medium text-primary">
+                  Login
+                </Link>
+              </p>
+            </div>
           </div>
         </section>
       </Card>
