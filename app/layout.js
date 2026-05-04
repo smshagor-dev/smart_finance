@@ -19,7 +19,7 @@ export async function generateMetadata() {
     },
     description,
     keywords,
-    metadataBase: new URL(siteSettings.siteUrl || process.env.NEXTAUTH_URL || "http://localhost:3000"),
+    metadataBase: new URL(siteSettings.siteUrl || process.env.NEXTAUTH_URL || "http://localhost:3001"),
     manifest: "/manifest.webmanifest",
     icons: siteSettings.iconUrl
       ? {

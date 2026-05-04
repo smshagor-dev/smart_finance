@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { forgotPasswordSchema } from "@/lib/validators";
 import { buildEmailChangeIdentifier, issueVerificationCode } from "@/lib/verification";
+import { createErrorResponse } from "@/lib/http-error";
 
 export async function POST(request) {
   try {
@@ -37,9 +38,11 @@ export async function POST(request) {
       message: purpose === "email-change" ? "A verification code has been sent to your new email." : "A new verification code has been generated.",
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: error.name === "ZodError" ? error.message : "Could not resend the verification code. Please check your email settings and try again." },
-      { status: error.name === "ZodError" ? 400 : 500 },
-    );
+    return createErrorResponse("POST /api/auth/resend-verification", error, {
+      publicMessage:
+        error.name === "ZodError"
+          ? error.message
+          : "Could not resend the verification code. Please check your email settings and try again.",
+    });
   }
 }

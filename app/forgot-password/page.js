@@ -12,7 +12,7 @@ export default function ForgotPasswordPage() {
           className="mt-8 space-y-4"
           action={async (formData) => {
             "use server";
-            await fetch(`${process.env.NEXTAUTH_URL || "http://localhost:3000"}/api/auth/forgot-password`, {
+            await fetch(`${process.env.NEXTAUTH_URL || "http://localhost:3001"}/api/auth/forgot-password`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ email: formData.get("email") }),

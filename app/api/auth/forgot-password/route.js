@@ -3,6 +3,7 @@ import { addHours } from "date-fns";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { forgotPasswordSchema } from "@/lib/validators";
+import { createErrorResponse } from "@/lib/http-error";
 
 export async function POST(request) {
   try {
@@ -24,6 +25,6 @@ export async function POST(request) {
       message: "If the email exists, a reset token has been prepared for future email delivery.",
     });
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: error.name === "ZodError" ? 400 : 500 });
+    return createErrorResponse("POST /api/auth/forgot-password", error);
   }
 }
