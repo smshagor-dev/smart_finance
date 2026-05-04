@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { getBaseUrl } from "@/lib/app-url";
 
 export default function ForgotPasswordPage() {
   return (
@@ -12,7 +14,13 @@ export default function ForgotPasswordPage() {
           className="mt-8 space-y-4"
           action={async (formData) => {
             "use server";
-            await fetch(`${process.env.NEXTAUTH_URL || "http://localhost:3001"}/api/auth/forgot-password`, {
+            const headerStore = await headers();
+            const origin =
+              headerStore.get("x-forwarded-proto") && headerStore.get("x-forwarded-host")
+                ? `${headerStore.get("x-forwarded-proto")}://${headerStore.get("x-forwarded-host")}`
+                : getBaseUrl();
+
+            await fetch(`${origin}/api/auth/forgot-password`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ email: formData.get("email") }),
