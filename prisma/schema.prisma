@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-1.0.x", "debian-openssl-1.1.x", "debian-openssl-3.0.x", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
@@ -495,7 +496,7 @@ model SiteSetting {
   id                            String   @id @default("global")
   siteName                      String   @default("Finance Tracker") @map("site_name")
   siteTagline                   String?  @map("site_tagline")
-  siteDescription               String   @default("Personal finance tracker built with Next.js, Prisma, and MySQL") @db.Text @map("site_description")
+  siteDescription               String   @db.Text @map("site_description")
   seoTitle                      String?  @map("seo_title")
   seoDescription                String?  @db.Text @map("seo_description")
   seoKeywords                   String?  @db.Text @map("seo_keywords")

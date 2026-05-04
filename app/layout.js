@@ -2,9 +2,25 @@ import { cookies } from "next/headers";
 import "./globals.css";
 import { PwaRegistration } from "@/components/pwa-registration";
 import { getPublicSiteSettings } from "@/lib/site-settings";
+import { getMetadataBaseUrl } from "@/lib/app-url";
 
 export async function generateMetadata() {
-  const siteSettings = await getPublicSiteSettings();
+  let siteSettings;
+
+  try {
+    siteSettings = await getPublicSiteSettings();
+  } catch {
+    siteSettings = {
+      siteName: "Finance Tracker",
+      siteDescription: "Personal finance tracker",
+      seoTitle: "Finance Tracker",
+      seoDescription: "Personal finance tracker",
+      seoKeywords: "",
+      siteUrl: null,
+      iconUrl: null,
+    };
+  }
+
   const title = siteSettings.seoTitle || siteSettings.siteName;
   const description = siteSettings.seoDescription || siteSettings.siteDescription;
   const keywords = (siteSettings.seoKeywords || "")
@@ -19,7 +35,7 @@ export async function generateMetadata() {
     },
     description,
     keywords,
-    metadataBase: new URL(siteSettings.siteUrl || process.env.NEXTAUTH_URL || "http://localhost:3001"),
+    metadataBase: getMetadataBaseUrl(siteSettings.siteUrl),
     manifest: "/manifest.webmanifest",
     icons: siteSettings.iconUrl
       ? {
@@ -51,7 +67,13 @@ function themeInitializationScript(initialTheme) {
 export default async function RootLayout({ children }) {
   const cookieStore = await cookies();
   const theme = cookieStore.get("finance_tracker_theme")?.value === "dark" ? "dark" : "light";
-  const siteSettings = await getPublicSiteSettings();
+  let siteSettings;
+
+  try {
+    siteSettings = await getPublicSiteSettings();
+  } catch {
+    siteSettings = { iconUrl: null };
+  }
 
   return (
     <html lang="en" className="h-full antialiased" data-theme={theme} suppressHydrationWarning>
