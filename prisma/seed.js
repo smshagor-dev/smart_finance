@@ -112,7 +112,7 @@ async function main() {
       ${"Personal finance tracker built with Next.js, Prisma, and MySQL"},
       ${"finance tracker, budgeting, expenses, income, wallet, reports"},
       ${isValidEmail(process.env.SMTP_USER) ? process.env.SMTP_USER : null},
-      ${process.env.NEXTAUTH_URL || "http://localhost:3000"},
+      ${process.env.NEXTAUTH_URL || "http://localhost:3001"},
       ${process.env.SMTP_HOST || null},
       ${Number(process.env.SMTP_PORT || 587)},
       ${process.env.SMTP_SECURE === "true"},

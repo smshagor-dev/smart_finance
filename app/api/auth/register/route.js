@@ -5,6 +5,7 @@ import { getSiteSettings } from "@/lib/site-settings";
 import { ensureUserFinanceSetup } from "@/lib/user";
 import { registerSchema } from "@/lib/validators";
 import { issueVerificationCode } from "@/lib/verification";
+import { createErrorResponse } from "@/lib/http-error";
 
 export async function POST(request) {
   try {
@@ -47,9 +48,11 @@ export async function POST(request) {
         : "Registration complete. Your account is ready to use.",
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: error.name === "ZodError" ? error.message : "Registration failed. Please check your email settings and try again." },
-      { status: error.name === "ZodError" ? 400 : 500 },
-    );
+    return createErrorResponse("POST /api/auth/register", error, {
+      publicMessage:
+        error.name === "ZodError"
+          ? error.message
+          : "Registration failed. Please check your email settings and try again.",
+    });
   }
 }

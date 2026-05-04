@@ -1,0 +1,5 @@
+RewriteEngine On
+
+# Forward all incoming requests to the Next.js app running on port 3001.
+RewriteCond %{REQUEST_URI} !^/\.well-known/
+RewriteRule ^(.*)$ http://127.0.0.1:3001/$1 [P,L]
