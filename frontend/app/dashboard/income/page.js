@@ -22,7 +22,7 @@ export default function IncomePage() {
         { name: "groupId", label: "Group", type: "select", lookupKey: "groups" },
         { name: "currencyId", label: "Currency", type: "select", lookupKey: "currencies" },
         { name: "transactionDate", label: "Income Date", type: "date" },
-        { name: "attachmentUrl", label: "Attachment URL", type: "text" },
+        { name: "attachmentUrl", label: "Attachment", type: "file-upload", fullWidth: true, uploadLabel: "Upload attachment" },
         { name: "note", label: "Note", type: "textarea", fullWidth: true },
       ]}
       defaultValues={{ type: "income", amount: "", incomeSource: "", categoryId: "", walletId: "", groupId: "", currencyId: "", transactionDate: "", attachmentUrl: "", note: "" }}

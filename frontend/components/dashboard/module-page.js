@@ -8,6 +8,7 @@ import {
   Clapperboard,
   Coins,
   CreditCard,
+  ExternalLink,
   Gem,
   GraduationCap,
   Heart,
@@ -22,8 +23,10 @@ import {
   Smartphone,
   Target,
   Trophy,
+  Upload,
   Utensils,
   Vault,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -142,6 +145,7 @@ export function ModulePage({
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(defaultValues);
   const [lookupData, setLookupData] = useState({});
+  const [uploadingField, setUploadingField] = useState("");
   const hasLoadedRef = useRef(false);
   const toast = useToast();
   const baseFiltersKey = JSON.stringify(baseFilters || {});
@@ -160,7 +164,9 @@ export function ModulePage({
         .filter(([, value]) => value)
         .map(([key, value]) => [key, String(value)]),
     );
-    const response = await fetch(`${endpoint}?${params.toString()}`);
+    const response = await fetch(`${endpoint}?${params.toString()}`, {
+      cache: "no-store",
+    });
     const data = await response.json();
     setItems(data.items || []);
     setPagination(data.pagination || null);
@@ -171,7 +177,9 @@ export function ModulePage({
 
   async function fetchLookups() {
     if (!stableLookups.length) return;
-    const response = await fetch("/api/dashboard/overview?mode=lookups");
+    const response = await fetch("/api/dashboard/overview?mode=lookups", {
+      cache: "no-store",
+    });
     const data = await response.json();
     setLookupData(data.lookups || {});
   }
@@ -189,7 +197,9 @@ export function ModulePage({
           .filter(([, value]) => value)
           .map(([key, value]) => [key, String(value)]),
       );
-      const response = await fetch(`${endpoint}?${params.toString()}`);
+      const response = await fetch(`${endpoint}?${params.toString()}`, {
+        cache: "no-store",
+      });
       const data = await response.json();
       if (!active) return;
       setItems(data.items || []);
@@ -210,7 +220,9 @@ export function ModulePage({
 
     async function load() {
       if (!stableLookups.length) return;
-      const response = await fetch("/api/dashboard/overview?mode=lookups");
+      const response = await fetch("/api/dashboard/overview?mode=lookups", {
+        cache: "no-store",
+      });
       const data = await response.json();
       if (!active) return;
       setLookupData(data.lookups || {});
@@ -242,6 +254,36 @@ export function ModulePage({
     });
     setForm(nextForm);
     setOpen(true);
+  }
+
+  async function handleFileUpload(field, file) {
+    if (!file) {
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+    setUploadingField(field.name);
+
+    try {
+      const response = await fetch(field.uploadEndpoint || "/api/uploads/attachments", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        toast.push(data.error || "Upload failed", "error");
+        return;
+      }
+
+      setForm((current) => ({ ...current, [field.name]: data.fileUrl }));
+      toast.push("Attachment uploaded");
+    } catch {
+      toast.push("Upload failed", "error");
+    } finally {
+      setUploadingField("");
+    }
   }
 
   async function handleSubmit(event) {
@@ -451,6 +493,56 @@ export function ModulePage({
                   value={form[field.name] ?? ""}
                   onChange={(value) => setForm((current) => ({ ...current, [field.name]: value }))}
                 />
+              ) : field.type === "file-upload" ? (
+                <div className="space-y-3">
+                  <div className="flex flex-wrap gap-3">
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800">
+                      <Upload className="h-4 w-4" />
+                      {uploadingField === field.name ? "Uploading..." : field.uploadLabel || "Upload file"}
+                      <input
+                        type="file"
+                        accept={field.accept || "image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"}
+                        className="hidden"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          if (file) {
+                            handleFileUpload(field, file);
+                          }
+                          event.target.value = "";
+                        }}
+                        disabled={uploadingField === field.name}
+                      />
+                    </label>
+                    {form[field.name] ? (
+                      <>
+                        <a
+                          href={form[field.name]}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-2 rounded-2xl border border-border bg-white px-4 py-3 text-sm font-medium transition hover:bg-muted"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          Open file
+                        </a>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={() => setForm((current) => ({ ...current, [field.name]: "" }))}
+                        >
+                          <X className="mr-2 h-4 w-4" />
+                          Remove
+                        </Button>
+                      </>
+                    ) : null}
+                  </div>
+                  <input
+                    type="text"
+                    className="w-full rounded-2xl border border-border bg-white px-4 py-3 outline-none"
+                    value={form[field.name] ?? ""}
+                    onChange={(event) => setForm((current) => ({ ...current, [field.name]: event.target.value }))}
+                    placeholder={field.placeholder || "Uploaded file URL will appear here"}
+                  />
+                </div>
               ) : field.type === "select" ? (
                 <select
                   className="w-full rounded-2xl border border-border bg-white px-4 py-3 outline-none"
