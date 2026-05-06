@@ -1,0 +1,26 @@
+{
+  "name": "smart-finance-frontend",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/run-next.mjs dev",
+    "check:env": "node scripts/check-env.mjs",
+    "build": "next build",
+    "start": "node scripts/check-env.mjs && node scripts/run-next.mjs start",
+    "lint": "eslint . --rule \"@next/next/no-html-link-for-pages: off\""
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.14.0",
+    "next": "16.2.4",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "recharts": "^3.8.1",
+    "sonner": "^2.0.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.4",
+    "tailwindcss": "^4"
+  }
+}

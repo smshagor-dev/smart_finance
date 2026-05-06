@@ -1,0 +1,33 @@
+{
+  "name": "smart-finance-backend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch server.js",
+    "build": "node scripts/run-prisma.cjs generate",
+    "check:env": "node scripts/check-env.cjs",
+    "start": "node scripts/check-env.cjs && node server.js",
+    "release": "npm run check:env && npm run db:migrate && npm run start",
+    "db:check": "node prisma/setup-legacy-mysql.cjs --check",
+    "db:generate": "node scripts/run-prisma.cjs generate",
+    "db:migrate": "node scripts/run-prisma.cjs migrate deploy",
+    "db:migrate:dev": "node scripts/run-prisma.cjs migrate dev",
+    "db:push": "node scripts/run-prisma.cjs db push",
+    "db:legacy-setup": "node scripts/run-prisma.cjs generate && node prisma/setup-legacy-mysql.cjs",
+    "db:seed": "node prisma/seed.js",
+    "db:setup": "node scripts/run-prisma.cjs generate && node prisma/setup-legacy-mysql.cjs && node prisma/seed.js"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.0",
+    "axios": "^1.15.2",
+    "bcryptjs": "^3.0.3",
+    "csv-stringify": "^6.7.0",
+    "date-fns": "^4.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "jspdf": "^4.2.1",
+    "nodemailer": "^7.0.13",
+    "prisma": "^6.19.0",
+    "xlsx": "^0.18.5",
+    "zod": "^4.4.1"
+  }
+}
