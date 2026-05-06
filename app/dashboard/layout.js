@@ -15,7 +15,7 @@ export default async function DashboardLayout({ children }) {
         <LiveUpdatesProvider />
         <Sidebar user={user} />
         <main className="lg:pl-72">
-          <div className="mx-auto max-w-7xl p-6 lg:p-8">
+          <div className="mx-auto max-w-7xl px-5 pb-6 pt-20 sm:px-6 sm:pt-24 lg:p-8">
             <Topbar user={user} />
             <PwaInstallBanner />
             {children}

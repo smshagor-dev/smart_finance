@@ -23,7 +23,7 @@ export default function TransactionsPage() {
         { name: "transactionDate", label: "Date", type: "date" },
         { name: "paymentMethod", label: "Payment Method", type: "text" },
         { name: "incomeSource", label: "Income Source", type: "text" },
-        { name: "attachmentUrl", label: "Attachment URL", type: "text" },
+        { name: "attachmentUrl", label: "Attachment", type: "file-upload", fullWidth: true, uploadLabel: "Upload attachment" },
         { name: "note", label: "Note", type: "textarea", fullWidth: true },
       ]}
       defaultValues={{ type: "expense", amount: "", categoryId: "", walletId: "", groupId: "", currencyId: "", transactionDate: "", paymentMethod: "", incomeSource: "", attachmentUrl: "", note: "" }}

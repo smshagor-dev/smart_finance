@@ -22,7 +22,7 @@ export default function ExpensesPage() {
         { name: "currencyId", label: "Currency", type: "select", lookupKey: "currencies" },
         { name: "paymentMethod", label: "Payment Method", type: "text" },
         { name: "transactionDate", label: "Expense Date", type: "date" },
-        { name: "attachmentUrl", label: "Attachment URL", type: "text" },
+        { name: "attachmentUrl", label: "Attachment", type: "file-upload", fullWidth: true, uploadLabel: "Upload attachment" },
         { name: "note", label: "Note", type: "textarea", fullWidth: true },
       ]}
       defaultValues={{ type: "expense", amount: "", categoryId: "", walletId: "", groupId: "", currencyId: "", paymentMethod: "", transactionDate: "", attachmentUrl: "", note: "" }}

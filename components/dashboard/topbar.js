@@ -21,25 +21,25 @@ export function Topbar({ user }) {
 
   return (
     <header className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-      <div>
-        <p className="text-sm uppercase tracking-[0.3em] text-slate-500">Finance Overview</p>
-        <h1 className="text-3xl font-semibold">Welcome back, {user.name}</h1>
+      <div className="pl-14 sm:pl-0">
+        <p className="text-xs uppercase tracking-[0.28em] text-slate-500 sm:text-sm sm:tracking-[0.3em]">Finance Overview</p>
+        <h1 className="max-w-[12ch] text-2xl font-semibold leading-tight sm:max-w-none sm:text-3xl">Welcome back, {user.name}</h1>
       </div>
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <div className="flex items-center gap-2 rounded-2xl border border-border bg-white px-4 py-3">
+      <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-row sm:flex-wrap sm:justify-end">
+        <div className="col-span-2 flex min-w-0 items-center gap-2 rounded-2xl border border-border bg-white px-4 py-3 sm:min-w-[280px]">
           <Search className="h-4 w-4 text-slate-500" />
-          <span className="text-sm text-slate-500">Search records, budgets, wallets...</span>
+          <span className="truncate text-sm text-slate-500">Search records, budgets, wallets...</span>
         </div>
         {isAdmin ? (
           <Link
             href={inAdminPanel ? "/dashboard" : "/dashboard/admin"}
-            className="inline-flex items-center justify-center rounded-2xl border border-border !bg-white px-4 py-3 text-sm font-medium !text-slate-900 shadow-sm transition hover:bg-muted"
+            className="col-span-2 inline-flex items-center justify-center rounded-2xl border border-border !bg-white px-4 py-3 text-sm font-medium !text-slate-900 shadow-sm transition hover:bg-muted sm:col-span-1"
           >
             {inAdminPanel ? "Back to App" : "Admin Panel"}
           </Link>
         ) : null}
         <AlertsDropdown />
-        <Button className="gap-2" onClick={handleLogout}>
+        <Button className="col-span-2 gap-2 sm:col-span-1" onClick={handleLogout}>
           <LogOut className="h-4 w-4" />
           Logout
         </Button>
