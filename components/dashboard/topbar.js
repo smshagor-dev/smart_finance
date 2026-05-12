@@ -12,6 +12,7 @@ export function Topbar({ user }) {
   const router = useRouter();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileSearch, setMobileSearch] = useState("");
   const mobileMenuRef = useRef(null);
   const desktopMenuRef = useRef(null);
   const isAdmin = user?.role === "admin";
@@ -62,18 +63,22 @@ export function Topbar({ user }) {
   return (
     <header className="mb-5 flex flex-col gap-4 min-[390px]:gap-5 sm:mb-6 lg:gap-5">
       <div className="space-y-3 lg:hidden">
-        <div className="sticky top-3 z-20 flex min-h-11 items-center justify-end gap-2 pl-12 min-[390px]:pl-14">
-          <button
-            type="button"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-white/90 shadow-sm backdrop-blur transition hover:bg-muted"
-            aria-label="Search"
-          >
-            <Search className="h-4 w-4 text-slate-500" />
-          </button>
+        <div className="sticky top-3 z-20 flex min-h-11 items-center gap-2 pl-12 min-[390px]:pl-14">
+          <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-2xl border border-border bg-white/90 px-3 text-sm text-slate-500 shadow-sm backdrop-blur transition focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10">
+            <Search className="h-4 w-4 shrink-0 text-slate-500" />
+            <input
+              type="search"
+              value={mobileSearch}
+              onChange={(event) => setMobileSearch(event.target.value)}
+              placeholder="Search records, budgets, wallets..."
+              className="w-full min-w-0 border-0 bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
+              aria-label="Search records, budgets, wallets"
+            />
+          </label>
           <div className="relative" ref={mobileMenuRef}>
             <button
               type="button"
-              className="inline-flex h-10 items-center gap-2 rounded-2xl border border-border bg-white/90 px-2.5 shadow-sm backdrop-blur transition hover:bg-muted"
+              className="inline-flex h-10 shrink-0 items-center gap-2 rounded-2xl border border-border bg-white/90 px-2.5 shadow-sm backdrop-blur transition hover:bg-muted"
               onClick={() => setMenuOpen((current) => !current)}
               aria-label="Open profile menu"
             >
