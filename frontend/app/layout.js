@@ -1,8 +1,13 @@
 import { cookies } from "next/headers";
 import "./globals.css";
+import { FrontendNoCache } from "@/components/frontend-no-cache";
 import { PwaRegistration } from "@/components/pwa-registration";
 import { getPublicSiteSettings } from "@/lib/site-settings";
 import { getMetadataBaseUrl } from "@/lib/app-url";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 export async function generateMetadata() {
   let siteSettings;
@@ -82,6 +87,7 @@ export default async function RootLayout({ children }) {
         {siteSettings.iconUrl ? <link rel="icon" href={siteSettings.iconUrl} /> : null}
       </head>
       <body className="min-h-full">
+        <FrontendNoCache />
         <PwaRegistration />
         {children}
       </body>

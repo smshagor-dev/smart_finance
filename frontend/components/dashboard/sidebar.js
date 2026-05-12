@@ -16,12 +16,17 @@ export function Sidebar({ user }) {
 
   return (
     <>
-      <button className="fixed top-4 left-4 z-40 rounded-xl border border-border bg-white p-2 lg:hidden" onClick={() => setOpen((v) => !v)}>
+      <button
+        className="fixed top-3 left-4 z-40 inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-white/95 shadow-sm backdrop-blur lg:hidden min-[390px]:top-4"
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Toggle navigation"
+      >
         <Menu className="h-5 w-5" />
       </button>
+      {open ? <button className="fixed inset-0 z-20 bg-slate-950/35 lg:hidden" onClick={() => setOpen(false)} aria-label="Close navigation" /> : null}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-30 flex h-screen w-72 flex-col border-r border-border bg-[#112215] px-5 py-6 text-white transition lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-30 flex h-screen w-[85vw] max-w-72 flex-col border-r border-border bg-[#112215] px-5 py-6 text-white transition lg:w-72 lg:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
