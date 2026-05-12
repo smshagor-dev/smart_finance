@@ -11,11 +11,11 @@ export default async function DashboardLayout({ children }) {
 
   return (
     <ToastProvider>
-      <div className="min-h-screen">
+      <div className="min-h-screen overflow-x-clip">
         <LiveUpdatesProvider />
         <Sidebar user={user} />
         <main className="lg:pl-72">
-          <div className="mx-auto max-w-7xl px-5 pb-6 pt-20 sm:px-6 sm:pt-24 lg:p-8">
+          <div className="mx-auto max-w-7xl px-4 pb-6 pt-16 min-[375px]:px-5 min-[390px]:pt-[4.5rem] min-[430px]:px-6 sm:pb-8 sm:pt-20 lg:p-8">
             <Topbar user={user} />
             <PwaInstallBanner />
             {children}

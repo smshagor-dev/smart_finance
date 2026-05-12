@@ -17,7 +17,7 @@ export function Sidebar({ user }) {
   return (
     <>
       <button
-        className="fixed top-4 left-4 z-40 rounded-xl border border-border bg-white p-2 shadow-sm lg:hidden"
+        className="fixed top-3 left-4 z-40 inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-white/95 shadow-sm backdrop-blur lg:hidden min-[390px]:top-4"
         onClick={() => setOpen((v) => !v)}
         aria-label="Toggle navigation"
       >

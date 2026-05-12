@@ -44,10 +44,12 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: clip;
 }
 
 body {
   min-height: 100vh;
+  overflow-x: clip;
   background:
     radial-gradient(circle at top left, rgba(15, 118, 110, 0.12), transparent 30%),
     linear-gradient(180deg, #f8fbf5 0%, #edf4ea 100%);

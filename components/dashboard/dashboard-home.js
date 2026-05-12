@@ -57,8 +57,8 @@ export function DashboardHome() {
   const insights = data.insights || [];
 
   return (
-    <div className="space-y-6">
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div className="space-y-4 min-[390px]:space-y-5 sm:space-y-6">
+      <section className="grid gap-3 min-[390px]:gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Total Balance" value={formatCurrency(stats.totalBalance, stats.currencyCode)} hint="Across all wallets" />
         <MetricCard label="Total Income" value={formatCurrency(stats.totalIncome, stats.currencyCode)} hint="Current month" accent="bg-green-600" />
         <MetricCard label="Total Expense" value={formatCurrency(stats.totalExpense, stats.currencyCode)} hint="Current month" accent="bg-red-600" />
@@ -67,54 +67,54 @@ export function DashboardHome() {
 
       <OverviewCharts categoryData={stats.expenseByCategory} trendData={stats.monthlyTrend} />
 
-      <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <Card className="p-5">
-          <h3 className="text-lg font-semibold">Recent Transactions</h3>
-          <div className="mt-4 space-y-3">
+      <section className="grid gap-4 sm:gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <Card className="p-4 min-[390px]:p-5">
+          <h3 className="text-base font-semibold min-[390px]:text-lg">Recent Transactions</h3>
+          <div className="mt-3 space-y-2.5 min-[390px]:mt-4 min-[390px]:space-y-3">
             {recentTransactions.length ? (
               recentTransactions.map((item) => (
-                <div key={item.id} className="flex items-center justify-between rounded-2xl bg-muted p-4">
-                  <div>
-                    <p className="font-medium">{item.category?.name || item.type}</p>
-                    <p className="text-sm text-slate-500">{formatDate(item.transactionDate)}</p>
+                <div key={item.id} className="flex items-center justify-between gap-3 rounded-2xl bg-muted px-3.5 py-3 min-[390px]:p-4">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium min-[390px]:text-base">{item.category?.name || item.type}</p>
+                    <p className="text-xs text-slate-500 min-[390px]:text-sm">{formatDate(item.transactionDate)}</p>
                   </div>
-                  <p className={item.type === "expense" ? "text-red-600" : "text-green-700"}>
+                  <p className={`shrink-0 text-sm font-semibold min-[390px]:text-base ${item.type === "expense" ? "text-red-600" : "text-green-700"}`}>
                     {item.type === "expense" ? "-" : "+"}
                     {formatCurrency(item.convertedAmount ?? item.amount, stats.currencyCode)}
                   </p>
                 </div>
               ))
             ) : (
-              <div className="rounded-2xl border border-dashed border-border bg-muted/40 p-6 text-center text-sm text-slate-500">No data found</div>
+              <div className="rounded-2xl border border-dashed border-border bg-muted/40 p-5 text-center text-sm text-slate-500">No data found</div>
             )}
           </div>
         </Card>
 
-        <div className="space-y-6">
-          <Card className="p-5">
-            <h3 className="text-lg font-semibold">Wallet Balances</h3>
-            <div className="mt-4 space-y-3">
+        <div className="space-y-4 sm:space-y-6">
+          <Card className="p-4 min-[390px]:p-5">
+            <h3 className="text-base font-semibold min-[390px]:text-lg">Wallet Balances</h3>
+            <div className="mt-3 space-y-2.5 min-[390px]:mt-4 min-[390px]:space-y-3">
               {walletSummary.length ? (
                 walletSummary.map((wallet) => (
-                  <div key={wallet.id} className="flex items-center justify-between rounded-2xl bg-muted p-4">
-                    <p>{wallet.name}</p>
-                    <p className="font-medium">{formatCurrency(wallet.displayBalance ?? wallet.balance, stats.currencyCode)}</p>
+                  <div key={wallet.id} className="flex items-center justify-between gap-3 rounded-2xl bg-muted px-3.5 py-3 min-[390px]:p-4">
+                    <p className="min-w-0 truncate text-sm font-medium min-[390px]:text-base">{wallet.name}</p>
+                    <p className="shrink-0 text-sm font-semibold min-[390px]:text-base">{formatCurrency(wallet.displayBalance ?? wallet.balance, stats.currencyCode)}</p>
                   </div>
                 ))
               ) : (
-                <div className="rounded-2xl border border-dashed border-border bg-muted/40 p-6 text-center text-sm text-slate-500">No data found</div>
+                <div className="rounded-2xl border border-dashed border-border bg-muted/40 p-5 text-center text-sm text-slate-500">No data found</div>
               )}
             </div>
           </Card>
 
-          <Card className="p-5">
-            <h3 className="text-lg font-semibold">Upcoming Bills</h3>
-            <div className="mt-4 space-y-3">
+          <Card className="p-4 min-[390px]:p-5">
+            <h3 className="text-base font-semibold min-[390px]:text-lg">Upcoming Bills</h3>
+            <div className="mt-3 space-y-2.5 min-[390px]:mt-4 min-[390px]:space-y-3">
               {upcomingBills.length ? (
                 upcomingBills.map((bill) => (
-                  <div key={bill.id} className="rounded-2xl bg-muted p-4">
-                    <p className="font-medium">{bill.title}</p>
-                    <p className="mt-1 text-sm text-slate-500">
+                  <div key={bill.id} className="rounded-2xl bg-muted px-3.5 py-3 min-[390px]:p-4">
+                    <p className="text-sm font-medium min-[390px]:text-base">{bill.title}</p>
+                    <p className="mt-1 text-xs text-slate-500 min-[390px]:text-sm">
                       {formatDate(bill.nextDueDate)} | {formatCurrency(bill.displayAmount ?? bill.amount, stats.currencyCode)}
                     </p>
                   </div>
@@ -127,14 +127,14 @@ export function DashboardHome() {
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-2">
-        <Card className="p-5">
-          <h3 className="text-lg font-semibold">Budget Usage</h3>
-          <div className="mt-4 space-y-4">
+      <section className="grid gap-4 sm:gap-6 xl:grid-cols-2">
+        <Card className="p-4 min-[390px]:p-5">
+          <h3 className="text-base font-semibold min-[390px]:text-lg">Budget Usage</h3>
+          <div className="mt-3 space-y-3.5 min-[390px]:mt-4 min-[390px]:space-y-4">
             {budgets.length ? (
               budgets.map((budget) => (
                 <div key={budget.id}>
-                  <div className="mb-2 flex items-center justify-between text-sm">
+                  <div className="mb-2 flex items-center justify-between gap-3 text-xs min-[390px]:text-sm">
                     <span>{budget.category?.name || "Overall Budget"}</span>
                     <span>{Math.round(budget.progress * 100)}%</span>
                   </div>
@@ -147,23 +147,23 @@ export function DashboardHome() {
                 </div>
               ))
             ) : (
-              <div className="rounded-2xl border border-dashed border-border bg-muted/40 p-6 text-center text-sm text-slate-500">No data found</div>
+              <div className="rounded-2xl border border-dashed border-border bg-muted/40 p-5 text-center text-sm text-slate-500">No data found</div>
             )}
           </div>
         </Card>
 
-        <Card className="p-5">
-          <h3 className="text-lg font-semibold">AI Insights</h3>
-          <div className="mt-4 space-y-3">
+        <Card className="p-4 min-[390px]:p-5">
+          <h3 className="text-base font-semibold min-[390px]:text-lg">AI Insights</h3>
+          <div className="mt-3 space-y-2.5 min-[390px]:mt-4 min-[390px]:space-y-3">
             {insights.length ? (
               insights.map((insight, index) => (
-                <div key={`${insight.title}-${index}`} className="rounded-2xl bg-muted p-4">
-                  <p className="font-medium">{insight.title}</p>
-                  <p className="mt-1 text-sm text-slate-500">{insight.description}</p>
+                <div key={`${insight.title}-${index}`} className="rounded-2xl bg-muted px-3.5 py-3 min-[390px]:p-4">
+                  <p className="text-sm font-medium min-[390px]:text-base">{insight.title}</p>
+                  <p className="mt-1 text-xs text-slate-500 min-[390px]:text-sm">{insight.description}</p>
                 </div>
               ))
             ) : (
-              <div className="rounded-2xl border border-dashed border-border bg-muted/40 p-6 text-center text-sm text-slate-500">No data found</div>
+              <div className="rounded-2xl border border-dashed border-border bg-muted/40 p-5 text-center text-sm text-slate-500">No data found</div>
             )}
           </div>
         </Card>

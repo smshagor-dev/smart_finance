@@ -18,7 +18,7 @@ const typeStyles = {
   system: "bg-slate-500/15 text-slate-700",
 };
 
-export function AlertsDropdown() {
+export function AlertsDropdown({ className, buttonClassName, panelClassName }) {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -143,8 +143,8 @@ export function AlertsDropdown() {
   }
 
   return (
-    <div className="relative" ref={panelRef}>
-      <Button variant="secondary" className="relative gap-2" onClick={() => setOpen((value) => !value)}>
+    <div className={cn("relative", className)} ref={panelRef}>
+      <Button variant="secondary" className={cn("relative gap-2", buttonClassName)} onClick={() => setOpen((value) => !value)}>
         <Bell className="h-4 w-4" />
         Alerts
         {unreadCount ? (
@@ -155,7 +155,7 @@ export function AlertsDropdown() {
       </Button>
 
       {open ? (
-        <div className="absolute right-0 z-40 mt-3 w-[22rem] rounded-3xl border border-border bg-white p-4 shadow-2xl">
+        <div className={cn("absolute right-0 z-40 mt-3 w-[min(22rem,calc(100vw-2rem))] rounded-3xl border border-border bg-white p-3.5 shadow-2xl min-[390px]:p-4", panelClassName)}>
           <div className="flex items-center justify-between gap-3">
             <div>
               <h3 className="text-sm font-semibold">Alerts</h3>
