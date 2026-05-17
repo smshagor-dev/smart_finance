@@ -1,10 +1,13 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Banknote,
   Briefcase,
   Car,
+  Check,
+  ChevronDown,
   Clapperboard,
   Coins,
   CreditCard,
@@ -21,6 +24,7 @@ import {
   Shield,
   ShoppingBag,
   Smartphone,
+  Search,
   Target,
   Trophy,
   Upload,
@@ -70,6 +74,119 @@ const iconMap = {
 
 function WalletIconFallback(props) {
   return <CreditCard {...props} />;
+}
+
+function SearchableSelect({ field, value, options, onChange, placeholder = "Select" }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (!containerRef.current?.contains(event.target)) {
+        setOpen(false);
+        setSearch("");
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const normalizedOptions = options.map((option) => ({
+    key: option.value || option.id,
+    value: option.value || option.id,
+    label: option.label || option.name || option.code || "",
+    symbol: option.symbol || "",
+  }));
+
+  const filteredOptions = normalizedOptions.filter((option) => {
+    const keyword = search.trim().toLowerCase();
+    if (!keyword) return true;
+    return `${option.label} ${option.symbol}`.toLowerCase().includes(keyword);
+  });
+
+  const selectedOption = normalizedOptions.find((option) => option.value === value);
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        className="flex w-full items-center justify-between rounded-2xl border border-border bg-white px-4 py-3 text-left outline-none transition focus:border-primary"
+        onClick={() =>
+          setOpen((current) => {
+            const nextOpen = !current;
+            if (!nextOpen) {
+              setSearch("");
+            }
+            return nextOpen;
+          })
+        }
+      >
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-slate-900">{selectedOption?.label || placeholder}</p>
+          <p className="truncate text-xs text-slate-500">
+            {selectedOption?.symbol || `Search and choose ${field.label.toLowerCase()}`}
+          </p>
+        </div>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-slate-500 transition ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open ? (
+        <div className="absolute z-20 mt-2 w-full rounded-3xl border border-border bg-white p-3 shadow-xl">
+          <div className="mb-3 flex items-center gap-2 rounded-2xl border border-border bg-slate-50 px-3 py-2">
+            <Search className="h-4 w-4 text-slate-500" />
+            <input
+              className="w-full bg-transparent text-sm outline-none"
+              placeholder={`Search ${field.label.toLowerCase()}`}
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </div>
+
+          <button
+            type="button"
+            className="flex w-full items-center justify-between rounded-2xl px-3 py-2 text-left text-sm hover:bg-muted"
+            onClick={() => {
+              onChange("");
+              setOpen(false);
+              setSearch("");
+            }}
+          >
+            <span>{placeholder}</span>
+            {!value ? <Check className="h-4 w-4 text-primary" /> : null}
+          </button>
+
+          <div className="mt-2 max-h-64 space-y-1 overflow-y-auto">
+            {filteredOptions.length ? (
+              filteredOptions.map((option) => (
+                <button
+                  key={option.key}
+                  type="button"
+                  className="flex w-full items-center justify-between rounded-2xl px-3 py-2 text-left hover:bg-muted"
+                  onClick={() => {
+                    onChange(option.value);
+                    setOpen(false);
+                    setSearch("");
+                  }}
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-slate-900">{option.label}</p>
+                    {option.symbol ? <p className="truncate text-xs text-slate-500">{option.symbol}</p> : null}
+                  </div>
+                  {value === option.value ? <Check className="h-4 w-4 shrink-0 text-primary" /> : null}
+                </button>
+              ))
+            ) : (
+              <p className="px-3 py-2 text-sm text-slate-500">No options found.</p>
+            )}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function renderCell(item, column) {
@@ -125,6 +242,10 @@ function endpointToResource(endpoint) {
   return endpoint.replace(/^\/api\//, "");
 }
 
+function isCurrencySelect(field) {
+  return field.lookupKey === "currencies" || field.name.toLowerCase().includes("currency");
+}
+
 export function ModulePage({
   title,
   description,
@@ -136,8 +257,10 @@ export function ModulePage({
   baseFilters = {},
   filterFields = [],
 }) {
+  const router = useRouter();
   const [items, setItems] = useState([]);
   const [pagination, setPagination] = useState(null);
+  const [summary, setSummary] = useState(null);
   const [filters, setFilters] = useState({ search: "", page: 1, sort: "newest" });
   const [loading, setLoading] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
@@ -170,6 +293,7 @@ export function ModulePage({
     const data = await response.json();
     setItems(data.items || []);
     setPagination(data.pagination || null);
+    setSummary(data.summary || null);
     setLoading(false);
     setHasLoaded(true);
     hasLoadedRef.current = true;
@@ -204,6 +328,7 @@ export function ModulePage({
       if (!active) return;
       setItems(data.items || []);
       setPagination(data.pagination || null);
+      setSummary(data.summary || null);
       setLoading(false);
       setHasLoaded(true);
       hasLoadedRef.current = true;
@@ -300,7 +425,12 @@ export function ModulePage({
     }
     toast.push(editing ? "Record updated" : "Record created");
     setOpen(false);
-    fetchData({ silent: true });
+    if (editing) {
+      fetchData({ silent: true });
+      return;
+    }
+    router.push("/dashboard");
+    router.refresh();
   }
 
   async function handleDelete(id) {
@@ -313,6 +443,19 @@ export function ModulePage({
     toast.push("Record deleted");
     fetchData({ silent: true });
   }
+
+  const summaryDateLabel = useMemo(() => {
+    if (filters.from && filters.to) {
+      return `${filters.from} to ${filters.to}`;
+    }
+    if (filters.from) {
+      return `From ${filters.from}`;
+    }
+    if (filters.to) {
+      return `Up to ${filters.to}`;
+    }
+    return "Based on current filters";
+  }, [filters.from, filters.to]);
 
   return (
     <div className="space-y-6">
@@ -344,33 +487,57 @@ export function ModulePage({
             </div>
 
             {filterFields.length ? (
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                {filterFields.map((field) => (
-                  <label key={field.name}>
-                    <span className="mb-2 block text-xs font-medium uppercase tracking-[0.2em] text-slate-500">{field.label}</span>
-                    {field.type === "select" ? (
-                      <select
-                        className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm outline-none"
-                        value={filters[field.name] ?? ""}
-                        onChange={(event) => setFilters((current) => ({ ...current, [field.name]: event.target.value, page: 1 }))}
-                      >
-                        <option value="">All</option>
-                        {(lookupData[field.lookupKey] || field.options || []).map((option) => (
-                          <option key={option.value || option.id} value={option.value || option.id}>
-                            {option.label || option.name}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <input
-                        type={field.type === "date" ? "date" : "text"}
-                        className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm outline-none"
-                        value={filters[field.name] ?? ""}
-                        onChange={(event) => setFilters((current) => ({ ...current, [field.name]: event.target.value, page: 1 }))}
-                      />
-                    )}
-                  </label>
-                ))}
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  {filterFields.map((field) => (
+                    <label key={field.name}>
+                      <span className="mb-2 block text-xs font-medium uppercase tracking-[0.2em] text-slate-500">{field.label}</span>
+                      {field.type === "select" ? (
+                        <select
+                          className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm outline-none"
+                          value={filters[field.name] ?? ""}
+                          onChange={(event) => setFilters((current) => ({ ...current, [field.name]: event.target.value, page: 1 }))}
+                        >
+                          <option value="">All</option>
+                          {(lookupData[field.lookupKey] || field.options || []).map((option) => (
+                            <option key={option.value || option.id} value={option.value || option.id}>
+                              {option.label || option.name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type={field.type === "date" ? "date" : "text"}
+                          className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm outline-none"
+                          value={filters[field.name] ?? ""}
+                          onChange={(event) => setFilters((current) => ({ ...current, [field.name]: event.target.value, page: 1 }))}
+                        />
+                      )}
+                    </label>
+                  ))}
+                </div>
+
+                {summary ? (
+                  <div className="rounded-3xl border border-border bg-muted/40 p-4 sm:p-5">
+                    <p className="text-xs font-medium uppercase tracking-[0.2em] text-slate-500">{summary.label}</p>
+                    <p className="mt-2 text-2xl font-semibold text-slate-900">
+                      {formatCurrency(summary.value || 0, summary.currencyCode || "USD")}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-500">{summaryDateLabel}</p>
+                    {pagination?.total ? <p className="mt-3 text-xs text-slate-500">{pagination.total} matched records</p> : null}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            {summary && !filterFields.length ? (
+              <div className="rounded-3xl border border-border bg-muted/40 p-4 sm:p-5">
+                <p className="text-xs font-medium uppercase tracking-[0.2em] text-slate-500">{summary.label}</p>
+                <p className="mt-2 text-2xl font-semibold text-slate-900">
+                  {formatCurrency(summary.value || 0, summary.currencyCode || "USD")}
+                </p>
+                <p className="mt-1 text-sm text-slate-500">{summaryDateLabel}</p>
+                {pagination?.total ? <p className="mt-3 text-xs text-slate-500">{pagination.total} matched records</p> : null}
               </div>
             ) : null}
           </div>
@@ -544,18 +711,28 @@ export function ModulePage({
                   />
                 </div>
               ) : field.type === "select" ? (
-                <select
-                  className="w-full rounded-2xl border border-border bg-white px-4 py-3 outline-none"
-                  value={form[field.name] ?? ""}
-                  onChange={(event) => setForm((current) => ({ ...current, [field.name]: event.target.value }))}
-                >
-                  <option value="">Select</option>
-                  {(field.options || lookupData[field.lookupKey] || []).map((option) => (
-                    <option key={option.value || option.id} value={option.value || option.id}>
-                      {option.label || option.name}
-                    </option>
-                  ))}
-                </select>
+                isCurrencySelect(field) ? (
+                  <SearchableSelect
+                    field={field}
+                    value={form[field.name] ?? ""}
+                    options={field.options || lookupData[field.lookupKey] || []}
+                    placeholder="Select"
+                    onChange={(nextValue) => setForm((current) => ({ ...current, [field.name]: nextValue }))}
+                  />
+                ) : (
+                  <select
+                    className="w-full rounded-2xl border border-border bg-white px-4 py-3 outline-none"
+                    value={form[field.name] ?? ""}
+                    onChange={(event) => setForm((current) => ({ ...current, [field.name]: event.target.value }))}
+                  >
+                    <option value="">Select</option>
+                    {(field.options || lookupData[field.lookupKey] || []).map((option) => (
+                      <option key={option.value || option.id} value={option.value || option.id}>
+                        {option.label || option.name}
+                      </option>
+                    ))}
+                  </select>
+                )
               ) : field.type === "textarea" ? (
                 <textarea
                   className="min-h-28 w-full rounded-2xl border border-border bg-white px-4 py-3 outline-none"
