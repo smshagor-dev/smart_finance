@@ -12,19 +12,25 @@ export function OverviewCharts({ categoryData, trendData }) {
       <Card className="p-4 min-[390px]:p-5">
         <div className="mb-3 min-[390px]:mb-4">
           <h3 className="text-base font-semibold min-[390px]:text-lg">Expense by Category</h3>
-          <p className="text-xs text-slate-500 min-[390px]:text-sm">See where most of your money goes.</p>
+          <p className="text-xs text-slate-500 min-[390px]:text-sm">See where most of your money goes overall.</p>
         </div>
         <div className="h-56 min-[375px]:h-60 min-[430px]:h-64 sm:h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie data={categoryData} dataKey="value" nameKey="name" innerRadius={52} outerRadius={84}>
-                {categoryData.map((entry, index) => (
-                  <Cell key={entry.name} fill={palette[index % palette.length]} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(value) => formatCurrency(value)} />
-            </PieChart>
-          </ResponsiveContainer>
+          {categoryData.length ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={categoryData} dataKey="value" nameKey="name" innerRadius={52} outerRadius={84}>
+                  {categoryData.map((entry, index) => (
+                    <Cell key={entry.name} fill={palette[index % palette.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value) => formatCurrency(value)} />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-border bg-muted/40 px-4 text-center text-sm text-slate-500">
+              Add expense records with categories to see this chart.
+            </div>
+          )}
         </div>
       </Card>
 
