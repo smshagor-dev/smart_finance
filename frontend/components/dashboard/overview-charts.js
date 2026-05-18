@@ -6,7 +6,13 @@ import { formatCurrency } from "@/lib/utils";
 
 const palette = ["#0f766e", "#15803d", "#2563eb", "#dc2626", "#d97706", "#7c3aed"];
 
-export function OverviewCharts({ categoryData, incomeCategoryData = [], trendData, comparisonData = [] }) {
+export function OverviewCharts({
+  categoryData,
+  incomeCategoryData = [],
+  trendData,
+  comparisonData = [],
+  currencyCode = "USD",
+}) {
   return (
     <div className="grid gap-4 sm:gap-6 xl:grid-cols-2">
       <Card className="p-4 min-[390px]:p-5 xl:col-span-1">
@@ -23,7 +29,7 @@ export function OverviewCharts({ categoryData, incomeCategoryData = [], trendDat
                     <Cell key={entry.name} fill={palette[index % palette.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value) => formatCurrency(value)} />
+                <Tooltip formatter={(value) => formatCurrency(value, currencyCode)} />
               </PieChart>
             </ResponsiveContainer>
           ) : (
@@ -48,7 +54,7 @@ export function OverviewCharts({ categoryData, incomeCategoryData = [], trendDat
                     <Cell key={entry.name} fill={palette[index % palette.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value) => formatCurrency(value)} />
+                <Tooltip formatter={(value) => formatCurrency(value, currencyCode)} />
               </PieChart>
             </ResponsiveContainer>
           ) : (
@@ -69,7 +75,7 @@ export function OverviewCharts({ categoryData, incomeCategoryData = [], trendDat
             <BarChart data={trendData}>
               <XAxis dataKey="month" />
               <YAxis />
-              <Tooltip formatter={(value) => formatCurrency(value)} />
+              <Tooltip formatter={(value) => formatCurrency(value, currencyCode)} />
               <Bar dataKey="income" fill="#15803d" radius={[8, 8, 0, 0]} />
               <Bar dataKey="expense" fill="#dc2626" radius={[8, 8, 0, 0]} />
             </BarChart>
@@ -88,7 +94,7 @@ export function OverviewCharts({ categoryData, incomeCategoryData = [], trendDat
               <BarChart data={comparisonData}>
                 <XAxis dataKey="month" />
                 <YAxis />
-                <Tooltip formatter={(value) => formatCurrency(value)} />
+                <Tooltip formatter={(value) => formatCurrency(value, currencyCode)} />
                 <Bar dataKey="income" fill="#15803d" radius={[8, 8, 0, 0]} />
                 <Bar dataKey="expense" fill="#dc2626" radius={[8, 8, 0, 0]} />
               </BarChart>

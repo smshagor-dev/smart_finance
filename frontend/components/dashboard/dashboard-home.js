@@ -127,7 +127,13 @@ export function DashboardHome() {
           <MetricCard label="Savings" value={formatCurrency(stats.monthlySavings, stats.currencyCode)} hint="Net this month" accent="bg-blue-600" icon={PiggyBank} />
         </section>
 
-        <OverviewCharts incomeCategoryData={stats.incomeByCategory} categoryData={stats.expenseByCategory} comparisonData={stats.monthComparison} trendData={stats.monthlyTrend} />
+        <OverviewCharts
+          incomeCategoryData={stats.incomeByCategory}
+          categoryData={stats.expenseByCategory}
+          comparisonData={stats.monthComparison}
+          trendData={stats.monthlyTrend}
+          currencyCode={stats.currencyCode}
+        />
 
         <section className="grid gap-4 sm:gap-6 xl:grid-cols-[1.2fr_0.8fr]">
           <Card className="p-4 min-[390px]:p-5">

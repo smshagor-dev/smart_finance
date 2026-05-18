@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Activity, Bell, FolderKanban, Receipt, Users, Wallet } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -18,11 +19,19 @@ const statCards = [
 
 export function AdminOverview() {
   const [data, setData] = useState(null);
+  const [usersPage, setUsersPage] = useState(1);
+  const [transactionsPage, setTransactionsPage] = useState(1);
+  const [groupsPage, setGroupsPage] = useState(1);
 
   useEffect(() => {
     let active = true;
+    const params = new URLSearchParams({
+      usersPage: String(usersPage),
+      transactionsPage: String(transactionsPage),
+      groupsPage: String(groupsPage),
+    });
 
-    fetch("/api/admin/overview")
+    fetch(`/api/admin/overview?${params.toString()}`)
       .then((response) => response.json())
       .then((payload) => {
         if (active) {
@@ -33,10 +42,34 @@ export function AdminOverview() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [groupsPage, transactionsPage, usersPage]);
 
   if (!data) {
     return <LoadingSkeleton rows={8} />;
+  }
+
+  function PaginationControls({ pageInfo, onPrevious, onNext }) {
+    return (
+      <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/60 pt-4">
+        <p className="text-xs text-slate-500">
+          Page {pageInfo.page} of {pageInfo.totalPages}
+        </p>
+        <div className="flex gap-2">
+          <Button type="button" variant="secondary" className="px-3 py-1.5 text-xs" onClick={onPrevious} disabled={pageInfo.page <= 1}>
+            Previous
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            className="px-3 py-1.5 text-xs"
+            onClick={onNext}
+            disabled={pageInfo.page >= pageInfo.totalPages}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -91,7 +124,13 @@ export function AdminOverview() {
         </Card>
 
         <Card className="p-5">
-          <h3 className="text-lg font-semibold">Recent users</h3>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-semibold">Recent users</h3>
+              <p className="mt-1 text-sm text-slate-500">{data.pagination?.users?.total || 0} users total</p>
+            </div>
+            <span className="rounded-full bg-muted px-3 py-1 text-xs font-semibold text-slate-600">10 / page</span>
+          </div>
           <div className="mt-4 space-y-3">
             {data.recentUsers?.length ? (
               data.recentUsers.map((user) => (
@@ -110,12 +149,25 @@ export function AdminOverview() {
               <div className="rounded-2xl border border-dashed border-border bg-muted/40 p-6 text-center text-sm text-slate-500">No users found</div>
             )}
           </div>
+          {data.pagination?.users ? (
+            <PaginationControls
+              pageInfo={data.pagination.users}
+              onPrevious={() => setUsersPage((current) => Math.max(1, current - 1))}
+              onNext={() => setUsersPage((current) => Math.min(data.pagination.users.totalPages, current + 1))}
+            />
+          ) : null}
         </Card>
       </section>
 
       <section className="grid gap-4 xl:grid-cols-2">
         <Card className="p-5">
-          <h3 className="text-lg font-semibold">Latest transactions</h3>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-semibold">Latest transactions</h3>
+              <p className="mt-1 text-sm text-slate-500">{data.pagination?.transactions?.total || 0} transactions total</p>
+            </div>
+            <span className="rounded-full bg-muted px-3 py-1 text-xs font-semibold text-slate-600">10 / page</span>
+          </div>
           <div className="mt-4 space-y-3">
             {data.recentTransactions?.length ? (
               data.recentTransactions.map((transaction) => (
@@ -130,17 +182,35 @@ export function AdminOverview() {
                       {transaction.category?.name || transaction.type} • {formatDate(transaction.transactionDate)}
                     </p>
                   </div>
-                  <p className="font-semibold">{formatCurrency(transaction.originalAmount ?? transaction.amount, transaction.currency?.code || "USD")}</p>
+                  <p className="font-semibold">
+                    {formatCurrency(
+                      transaction.originalAmount ?? transaction.amount,
+                      transaction.currency?.code || transaction.user?.defaultCurrency?.code || "USD",
+                    )}
+                  </p>
                 </Link>
               ))
             ) : (
               <div className="rounded-2xl border border-dashed border-border bg-muted/40 p-6 text-center text-sm text-slate-500">No transaction activity yet</div>
             )}
           </div>
+          {data.pagination?.transactions ? (
+            <PaginationControls
+              pageInfo={data.pagination.transactions}
+              onPrevious={() => setTransactionsPage((current) => Math.max(1, current - 1))}
+              onNext={() => setTransactionsPage((current) => Math.min(data.pagination.transactions.totalPages, current + 1))}
+            />
+          ) : null}
         </Card>
 
         <Card className="p-5">
-          <h3 className="text-lg font-semibold">Shared groups</h3>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-semibold">Shared groups</h3>
+              <p className="mt-1 text-sm text-slate-500">{data.pagination?.groups?.total || 0} groups total</p>
+            </div>
+            <span className="rounded-full bg-muted px-3 py-1 text-xs font-semibold text-slate-600">10 / page</span>
+          </div>
           <div className="mt-4 space-y-3">
             {data.recentGroups?.length ? (
               data.recentGroups.map((group) => (
@@ -163,6 +233,13 @@ export function AdminOverview() {
               <div className="rounded-2xl border border-dashed border-border bg-muted/40 p-6 text-center text-sm text-slate-500">No groups found</div>
             )}
           </div>
+          {data.pagination?.groups ? (
+            <PaginationControls
+              pageInfo={data.pagination.groups}
+              onPrevious={() => setGroupsPage((current) => Math.max(1, current - 1))}
+              onNext={() => setGroupsPage((current) => Math.min(data.pagination.groups.totalPages, current + 1))}
+            />
+          ) : null}
         </Card>
       </section>
     </div>
