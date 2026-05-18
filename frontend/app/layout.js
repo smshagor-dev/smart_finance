@@ -1,4 +1,6 @@
 import { cookies } from "next/headers";
+import Script from "next/script";
+import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 import { FrontendNoCache } from "@/components/frontend-no-cache";
 import { PwaRegistration } from "@/components/pwa-registration";
@@ -83,13 +85,18 @@ export default async function RootLayout({ children }) {
   return (
     <html lang="en" className="h-full antialiased" data-theme={theme} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInitializationScript(theme) }} />
+        <Script
+          id="theme-init"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: themeInitializationScript(theme) }}
+        />
         {siteSettings.iconUrl ? <link rel="icon" href={siteSettings.iconUrl} /> : null}
       </head>
       <body className="min-h-full">
         <FrontendNoCache />
         <PwaRegistration />
         {children}
+        <Analytics />
       </body>
     </html>
   );

@@ -33,16 +33,6 @@ export function Sidebar({ user }) {
 
   return (
     <>
-      <button
-        className={cn(
-          "fixed top-3 left-4 z-40 inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-white/95 shadow-sm backdrop-blur transition lg:hidden min-[390px]:top-4",
-          open && "pointer-events-none opacity-0",
-        )}
-        onClick={() => setOpen((v) => !v)}
-        aria-label="Toggle navigation"
-      >
-        <Menu className="h-5 w-5" />
-      </button>
       {open ? <button className="fixed inset-0 z-20 bg-slate-950/35 lg:hidden" onClick={() => setOpen(false)} aria-label="Close navigation" /> : null}
       <aside
         className={cn(

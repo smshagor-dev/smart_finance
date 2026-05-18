@@ -178,13 +178,16 @@ export function AuthForm({ mode = "login" }) {
 
   return (
     <div className="space-y-5">
-      <form className={`space-y-4 ${mode === "register" ? "rounded-[2rem] bg-white/75 p-5 ring-1 ring-black/5 backdrop-blur" : ""}`} onSubmit={handleSubmit}>
+      <form
+        className={`space-y-4 ${mode === "register" ? "rounded-[1.75rem] border border-[#0F7A3A]/12 bg-[#FFFFFF] p-4 sm:p-5" : ""}`}
+        onSubmit={handleSubmit}
+      >
         {showRegisterFields ? (
           <>
             <label className="block">
-              <span className="mb-2 block text-sm font-medium">Full name</span>
+              <span className="mb-2 block text-sm font-medium text-[#1F2937]">Full name</span>
               <input
-                className="w-full rounded-2xl border border-border bg-white px-4 py-3 outline-none transition focus:border-primary"
+                className="min-h-12 w-full rounded-full border border-[#0F7A3A]/16 bg-[#BFE7D6]/35 px-5 py-3 text-[#1F2937] outline-none transition placeholder:text-[#6B7280] focus:border-[#0F7A3A] focus:bg-[#FFFFFF]"
                 value={form.name}
                 onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
                 required
@@ -192,28 +195,28 @@ export function AuthForm({ mode = "login" }) {
               />
             </label>
             <div className="block">
-              <span className="mb-2 block text-sm font-medium">Default currency</span>
+              <span className="mb-2 block text-sm font-medium text-[#1F2937]">Default currency</span>
               <div className="relative">
                 <button
                   type="button"
-                  className="flex w-full items-center justify-between rounded-2xl border border-border bg-white px-4 py-3 text-left outline-none transition focus:border-primary"
+                  className="flex min-h-12 w-full items-center justify-between rounded-full border border-[#0F7A3A]/16 bg-[#BFE7D6]/35 px-5 py-3 text-left outline-none transition focus:border-[#0F7A3A] focus:bg-[#FFFFFF]"
                   onClick={() => setCurrencyOpen((current) => !current)}
                 >
                   <div>
-                    <p className="text-sm font-medium text-slate-900">
+                    <p className="text-sm font-medium text-[#1F2937]">
                       {selectedCurrency ? `${selectedCurrency.code} - ${selectedCurrency.name || selectedCurrency.code}` : "Use system default (USD)"}
                     </p>
-                    <p className="text-xs text-slate-500">{selectedCurrency?.symbol ? `Symbol: ${selectedCurrency.symbol}` : "Live currency-aware tracking"}</p>
+                    <p className="text-xs text-[#6B7280]">{selectedCurrency?.symbol ? `Symbol: ${selectedCurrency.symbol}` : "Live currency-aware tracking"}</p>
                   </div>
-                  <ChevronDown className={`h-4 w-4 text-slate-500 transition ${currencyOpen ? "rotate-180" : ""}`} />
+                  <ChevronDown className={`h-4 w-4 text-[#075C2B] transition ${currencyOpen ? "rotate-180" : ""}`} />
                 </button>
 
                 {currencyOpen ? (
-                  <div className="absolute z-20 mt-2 w-full rounded-3xl border border-border bg-white p-3 shadow-xl">
-                    <div className="mb-3 flex items-center gap-2 rounded-2xl border border-border bg-slate-50 px-3 py-2">
-                      <Search className="h-4 w-4 text-slate-500" />
+                  <div className="absolute z-20 mt-2 w-full rounded-[1.75rem] border border-[#0F7A3A]/16 bg-[#FFFFFF] p-3 shadow-[0_18px_45px_rgba(7,92,43,0.16)]">
+                    <div className="mb-3 flex items-center gap-2 rounded-full border border-[#0F7A3A]/14 bg-[#BFE7D6]/35 px-4 py-3">
+                      <Search className="h-4 w-4 text-[#075C2B]" />
                       <input
-                        className="w-full bg-transparent text-sm outline-none"
+                        className="w-full bg-transparent text-sm text-[#1F2937] outline-none placeholder:text-[#6B7280]"
                         placeholder="Search currency by code or name"
                         value={currencySearch}
                         onChange={(event) => setCurrencySearch(event.target.value)}
@@ -221,7 +224,7 @@ export function AuthForm({ mode = "login" }) {
                     </div>
                     <button
                       type="button"
-                      className="flex w-full items-center justify-between rounded-2xl px-3 py-2 text-left text-sm hover:bg-muted"
+                      className="flex w-full items-center justify-between rounded-2xl px-3 py-2 text-left text-sm text-[#1F2937] transition hover:bg-[#BFE7D6]/35"
                       onClick={() => {
                         setForm((current) => ({ ...current, defaultCurrencyId: "" }));
                         setCurrencyOpen(false);
@@ -229,7 +232,7 @@ export function AuthForm({ mode = "login" }) {
                       }}
                     >
                       <span>Use system default (USD)</span>
-                      {!form.defaultCurrencyId ? <Check className="h-4 w-4 text-primary" /> : null}
+                      {!form.defaultCurrencyId ? <Check className="h-4 w-4 text-[#0F7A3A]" /> : null}
                     </button>
                     <div className="mt-2 max-h-64 space-y-1 overflow-y-auto">
                       {filteredCurrencies.length ? (
@@ -237,7 +240,7 @@ export function AuthForm({ mode = "login" }) {
                           <button
                             key={currency.id}
                             type="button"
-                            className="flex w-full items-center justify-between rounded-2xl px-3 py-2 text-left hover:bg-muted"
+                            className="flex w-full items-center justify-between rounded-2xl px-3 py-2 text-left transition hover:bg-[#BFE7D6]/35"
                             onClick={() => {
                               setForm((current) => ({ ...current, defaultCurrencyId: currency.id }));
                               setCurrencyOpen(false);
@@ -245,17 +248,17 @@ export function AuthForm({ mode = "login" }) {
                             }}
                           >
                             <div>
-                              <p className="text-sm font-medium text-slate-900">{currency.code}</p>
-                              <p className="text-xs text-slate-500">{currency.name || currency.code}</p>
+                              <p className="text-sm font-medium text-[#1F2937]">{currency.code}</p>
+                              <p className="text-xs text-[#6B7280]">{currency.name || currency.code}</p>
                             </div>
                             <div className="flex items-center gap-3">
-                              <span className="text-sm text-slate-500">{currency.symbol || currency.code}</span>
-                              {form.defaultCurrencyId === currency.id ? <Check className="h-4 w-4 text-primary" /> : null}
+                              <span className="text-sm text-[#6B7280]">{currency.symbol || currency.code}</span>
+                              {form.defaultCurrencyId === currency.id ? <Check className="h-4 w-4 text-[#0F7A3A]" /> : null}
                             </div>
                           </button>
                         ))
                       ) : (
-                        <p className="px-3 py-2 text-sm text-slate-500">No currencies found.</p>
+                        <p className="px-3 py-2 text-sm text-[#6B7280]">No currencies found.</p>
                       )}
                     </div>
                   </div>
@@ -266,10 +269,10 @@ export function AuthForm({ mode = "login" }) {
         ) : null}
 
         <label className="block">
-          <span className="mb-2 block text-sm font-medium">Email</span>
+          <span className="mb-2 block text-sm font-medium text-[#1F2937]">Email</span>
           <input
             type="email"
-            className="w-full rounded-2xl border border-border bg-white px-4 py-3 outline-none transition focus:border-primary"
+            className="min-h-12 w-full rounded-full border border-[#0F7A3A]/16 bg-[#BFE7D6]/35 px-5 py-3 text-[#1F2937] outline-none transition placeholder:text-[#6B7280] focus:border-[#0F7A3A] focus:bg-[#FFFFFF] disabled:bg-[#BFE7D6]/20 disabled:text-[#6B7280]"
             value={form.email}
             onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
             required
@@ -279,11 +282,11 @@ export function AuthForm({ mode = "login" }) {
         </label>
 
         <label className="block">
-          <span className="mb-2 block text-sm font-medium">Password</span>
-          <div className="flex items-center rounded-2xl border border-border bg-white px-4 transition focus-within:border-primary">
+          <span className="mb-2 block text-sm font-medium text-[#1F2937]">Password</span>
+          <div className="flex min-h-12 items-center rounded-full border border-[#0F7A3A]/16 bg-[#BFE7D6]/35 px-5 transition focus-within:border-[#0F7A3A] focus-within:bg-[#FFFFFF]">
             <input
               type={showPassword ? "text" : "password"}
-              className="w-full bg-transparent py-3 outline-none"
+              className="w-full bg-transparent py-3 text-[#1F2937] outline-none placeholder:text-[#6B7280] disabled:text-[#6B7280]"
               value={form.password}
               onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
               required
@@ -292,7 +295,7 @@ export function AuthForm({ mode = "login" }) {
             />
             <button
               type="button"
-              className="text-slate-500"
+              className="text-[#075C2B]"
               onClick={() => setShowPassword((current) => !current)}
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
@@ -303,11 +306,11 @@ export function AuthForm({ mode = "login" }) {
 
         {showRegisterFields ? (
           <label className="block">
-            <span className="mb-2 block text-sm font-medium">Confirm password</span>
-            <div className="flex items-center rounded-2xl border border-border bg-white px-4 transition focus-within:border-primary">
+            <span className="mb-2 block text-sm font-medium text-[#1F2937]">Confirm password</span>
+            <div className="flex min-h-12 items-center rounded-full border border-[#0F7A3A]/16 bg-[#BFE7D6]/35 px-5 transition focus-within:border-[#0F7A3A] focus-within:bg-[#FFFFFF]">
               <input
                 type={showConfirmPassword ? "text" : "password"}
-                className="w-full bg-transparent py-3 outline-none"
+                className="w-full bg-transparent py-3 text-[#1F2937] outline-none placeholder:text-[#6B7280]"
                 value={form.confirmPassword}
                 onChange={(event) => setForm((current) => ({ ...current, confirmPassword: event.target.value }))}
                 required
@@ -315,7 +318,7 @@ export function AuthForm({ mode = "login" }) {
               />
               <button
                 type="button"
-                className="text-slate-500"
+                className="text-[#075C2B]"
                 onClick={() => setShowConfirmPassword((current) => !current)}
                 aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
               >
@@ -327,11 +330,11 @@ export function AuthForm({ mode = "login" }) {
 
         {mode === "register" && verificationStep ? (
           <label className="block">
-            <span className="mb-2 block text-sm font-medium">Verification code</span>
+            <span className="mb-2 block text-sm font-medium text-[#1F2937]">Verification code</span>
             <input
               type="text"
               maxLength={6}
-              className="w-full rounded-2xl border border-border bg-white px-4 py-3 outline-none transition focus:border-primary"
+              className="min-h-12 w-full rounded-full border border-[#0F7A3A]/16 bg-[#BFE7D6]/35 px-5 py-3 text-[#1F2937] outline-none transition placeholder:text-[#6B7280] focus:border-[#0F7A3A] focus:bg-[#FFFFFF]"
               value={form.code}
               onChange={(event) => setForm((current) => ({ ...current, code: event.target.value }))}
               placeholder="Enter 6-digit code"
@@ -342,20 +345,28 @@ export function AuthForm({ mode = "login" }) {
 
         {mode === "login" ? (
           <div className="flex items-center justify-between gap-3">
-            <label className="flex items-center gap-2 text-sm text-slate-600">
-              <input type="checkbox" checked={rememberMe} onChange={(event) => setRememberMe(event.target.checked)} />
+            <label className="flex items-center gap-2 text-sm text-[#6B7280]">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-[#0F7A3A]/30 accent-[#0F7A3A]"
+                checked={rememberMe}
+                onChange={(event) => setRememberMe(event.target.checked)}
+              />
               <span>Remember me</span>
             </label>
-            <Link href="/forgot-password" className="text-sm font-medium text-primary">
+            <Link href="/forgot-password" className="text-sm font-semibold text-[#075C2B] transition hover:text-[#0F7A3A]">
               Forgot password?
             </Link>
           </div>
         ) : null}
 
-        {info ? <p className="text-sm text-emerald-700">{info}</p> : null}
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        {info ? <p className="rounded-2xl bg-[#BFE7D6]/45 px-4 py-3 text-sm text-[#075C2B]">{info}</p> : null}
+        {error ? <p className="rounded-2xl border border-[#0F7A3A]/14 bg-[#BFE7D6]/28 px-4 py-3 text-sm text-[#075C2B]">{error}</p> : null}
 
-        <Button className="w-full" disabled={loading}>
+        <Button
+          className="min-h-12 w-full rounded-full bg-[linear-gradient(135deg,#0F7A3A_0%,#075C2B_100%)] text-[#FFFFFF] shadow-[0_14px_34px_rgba(7,92,43,0.2)] hover:opacity-100"
+          disabled={loading}
+        >
           {loading
             ? "Please wait..."
             : mode === "login"
@@ -366,12 +377,17 @@ export function AuthForm({ mode = "login" }) {
         </Button>
 
         {mode === "register" && verificationStep ? (
-          <Button type="button" variant="secondary" className="w-full" onClick={resendCode} disabled={loading}>
+          <Button
+            type="button"
+            variant="secondary"
+            className="min-h-12 w-full rounded-full border-[#0F7A3A]/18 bg-[#FFFFFF] text-[#075C2B] hover:bg-[#BFE7D6]/35"
+            onClick={resendCode}
+            disabled={loading}
+          >
             Resend code
           </Button>
         ) : null}
       </form>
-
     </div>
   );
 }

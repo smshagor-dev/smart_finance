@@ -1,7 +1,7 @@
 "use client";
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { Bell, LogOut, Plus, Search, Settings, Shield, User, X } from "lucide-react";
+import { Bell, LogOut, Moon, Plus, Search, Settings, Shield, Sun, User, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useLiveUpdateListener } from "@/lib/live-client";
@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { logoutUser } from "@/lib/client-auth";
 import { ADMIN_PANEL_ITEMS, SIDEBAR_ITEMS } from "@/lib/constants";
+import { applyTheme } from "@/lib/theme-client";
 
 export function Topbar({ user }) {
   const router = useRouter();
@@ -18,6 +19,7 @@ export function Topbar({ user }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [theme, setTheme] = useState("light");
   const mobileMenuRef = useRef(null);
   const desktopMenuRef = useRef(null);
   const isAdmin = user?.role === "admin";
@@ -131,6 +133,11 @@ export function Topbar({ user }) {
     };
   }, []);
 
+  useEffect(() => {
+    const currentTheme = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+    setTheme(currentTheme);
+  }, []);
+
   useLiveUpdateListener(["notifications"], () => {
     loadUnreadCount();
   });
@@ -148,6 +155,12 @@ export function Topbar({ user }) {
   function openNotifications() {
     setMenuOpen(false);
     window.dispatchEvent(new CustomEvent("dashboard-notifications-open"));
+  }
+
+  function toggleTheme() {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
+    applyTheme(nextTheme);
   }
 
   function navigateFromSearch(item) {
@@ -171,18 +184,19 @@ export function Topbar({ user }) {
       .slice(0, 2)
       .map((part) => part[0]?.toUpperCase())
       .join("") || "U";
+  const ThemeIcon = theme === "dark" ? Sun : Moon;
   return (
     <header className="mb-5 flex flex-col gap-4 min-[390px]:gap-5 sm:mb-6 lg:gap-5">
       <div className="space-y-3 pt-14 min-[390px]:pt-16 lg:hidden">
         <div
           className={cn(
-            "fixed top-3 right-4 left-14 z-30 grid min-h-11 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 transition min-[390px]:top-4 min-[390px]:right-5 min-[390px]:left-16 min-[430px]:right-6",
+            "fixed top-3 left-4 right-4 z-30 grid min-h-10 grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-2 transition min-[390px]:top-4 min-[390px]:left-5 min-[390px]:right-5 min-[430px]:left-6 min-[430px]:right-6",
             mobileNavOpen && "pointer-events-none opacity-0",
           )}
         >
           <div className="relative min-w-0" data-dashboard-search>
             <form
-              className="flex h-10 min-w-0 items-center gap-2 rounded-2xl border border-border bg-white/90 px-3 text-sm text-slate-500 shadow-sm backdrop-blur transition focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10"
+              className="flex h-9 min-w-0 items-center gap-2 rounded-2xl border border-border bg-white/90 px-3 text-sm text-slate-500 shadow-sm backdrop-blur transition focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10"
               onSubmit={handleSearchSubmit}
             >
               <Search className="h-4 w-4 shrink-0 text-slate-500" />
@@ -243,7 +257,7 @@ export function Topbar({ user }) {
           </div>
           <button
             type="button"
-            className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border bg-white/90 text-slate-700 shadow-sm backdrop-blur transition hover:bg-muted"
+            className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-border bg-white/90 text-slate-700 shadow-sm backdrop-blur transition hover:bg-muted"
             onClick={openNotifications}
             aria-label="Open notifications"
           >
@@ -254,18 +268,26 @@ export function Topbar({ user }) {
               </span>
             ) : null}
           </button>
+          <button
+            type="button"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-border bg-white/90 text-slate-700 shadow-sm backdrop-blur transition hover:bg-muted"
+            onClick={toggleTheme}
+            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            <ThemeIcon className="h-4 w-4" />
+          </button>
           <div className="relative" ref={mobileMenuRef}>
             <button
               type="button"
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border bg-white/90 shadow-sm backdrop-blur transition hover:bg-muted"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-border bg-white/90 shadow-sm backdrop-blur transition hover:bg-muted"
               onClick={() => setMenuOpen((current) => !current)}
               aria-label="Open profile menu"
             >
               {user?.image ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={user.image} alt={user.name || "Profile image"} className="h-7 w-7 rounded-full object-cover" />
+                <img src={user.image} alt={user.name || "Profile image"} className="h-6.5 w-6.5 rounded-full object-cover" />
               ) : (
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">{initials}</span>
+                <span className="inline-flex h-6.5 w-6.5 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground">{initials}</span>
               )}
             </button>
 
@@ -434,6 +456,14 @@ export function Topbar({ user }) {
                 {unreadCount > 9 ? "9+" : unreadCount}
               </span>
             ) : null}
+          </button>
+          <button
+            type="button"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-border bg-white text-slate-700 shadow-sm transition hover:bg-muted min-[390px]:h-12 min-[390px]:w-12"
+            onClick={toggleTheme}
+            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            <ThemeIcon className="h-4 w-4" />
           </button>
 
           <div className="relative" ref={desktopMenuRef}>

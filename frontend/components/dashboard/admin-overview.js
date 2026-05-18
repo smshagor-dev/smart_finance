@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Activity, Bell, FolderKanban, Receipt, Users, Wallet } from "lucide-react";
+import { Activity, Bell, FolderKanban, Gauge, MonitorSmartphone, Receipt, Server, Users, Wallet, Wifi } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
@@ -22,6 +22,16 @@ export function AdminOverview() {
   const [usersPage, setUsersPage] = useState(1);
   const [transactionsPage, setTransactionsPage] = useState(1);
   const [groupsPage, setGroupsPage] = useState(1);
+  const [clientMetrics, setClientMetrics] = useState({
+    frontendStatus: "Checking",
+    frontendLatency: null,
+    apiStatus: "Checking",
+    apiLatency: null,
+    sessionViews: 0,
+    totalViews: 0,
+    deviceLabel: "Unknown",
+    connectionLabel: "Unknown",
+  });
 
   useEffect(() => {
     let active = true;
@@ -43,6 +53,76 @@ export function AdminOverview() {
       active = false;
     };
   }, [groupsPage, transactionsPage, usersPage]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const sessionKey = "sf_admin_session_views";
+    const totalKey = "sf_admin_total_views";
+    const nextSessionViews = Number(window.sessionStorage.getItem(sessionKey) || "0") + 1;
+    const nextTotalViews = Number(window.localStorage.getItem(totalKey) || "0") + 1;
+    window.sessionStorage.setItem(sessionKey, String(nextSessionViews));
+    window.localStorage.setItem(totalKey, String(nextTotalViews));
+
+    const navigationEntry = performance.getEntriesByType("navigation")[0];
+    const frontendLatency =
+      navigationEntry && "responseEnd" in navigationEntry ? Math.max(1, Math.round(navigationEntry.responseEnd)) : null;
+    const width = window.innerWidth;
+    const deviceLabel = width < 640 ? "Mobile" : width < 1024 ? "Tablet" : "Desktop";
+    const connectionLabel =
+      navigator.connection?.effectiveType || (navigator.onLine ? "online" : "offline");
+
+    setClientMetrics((current) => ({
+      ...current,
+      frontendStatus: navigator.onLine ? "Live" : "Offline",
+      frontendLatency,
+      sessionViews: nextSessionViews,
+      totalViews: nextTotalViews,
+      deviceLabel,
+      connectionLabel,
+    }));
+
+    let cancelled = false;
+    const startedAt = performance.now();
+
+    fetch("/api/health", { cache: "no-store" })
+      .then((response) => {
+        if (cancelled) return;
+        const latency = Math.max(1, Math.round(performance.now() - startedAt));
+        setClientMetrics((current) => ({
+          ...current,
+          apiStatus: response.ok ? "Healthy" : "Issue",
+          apiLatency: latency,
+        }));
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setClientMetrics((current) => ({
+          ...current,
+          apiStatus: "Unavailable",
+          apiLatency: null,
+        }));
+      });
+
+    function handleOnlineChange() {
+      setClientMetrics((current) => ({
+        ...current,
+        frontendStatus: navigator.onLine ? "Live" : "Offline",
+        connectionLabel: navigator.connection?.effectiveType || (navigator.onLine ? "online" : "offline"),
+      }));
+    }
+
+    window.addEventListener("online", handleOnlineChange);
+    window.addEventListener("offline", handleOnlineChange);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("online", handleOnlineChange);
+      window.removeEventListener("offline", handleOnlineChange);
+    };
+  }, []);
 
   if (!data) {
     return <LoadingSkeleton rows={8} />;
@@ -100,25 +180,61 @@ export function AdminOverview() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <h3 className="text-lg font-semibold">Platform health</h3>
-              <p className="mt-1 text-sm text-slate-500">Verification coverage, admin access, and transaction throughput.</p>
+              <p className="mt-1 text-sm text-slate-500">Frontend-live health, API reachability, Vercel analytics, and transaction throughput.</p>
             </div>
             <div className="rounded-2xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
               {data.stats?.verifiedUsers || 0} verified
             </div>
           </div>
 
-          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <div className="rounded-3xl bg-muted p-4">
-              <p className="text-sm text-slate-500">Admin Accounts</p>
-              <p className="mt-2 text-2xl font-semibold">{data.stats?.totalAdmins || 0}</p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-slate-500">Frontend Status</p>
+                <Server className="h-4 w-4 text-slate-500" />
+              </div>
+              <p className="mt-2 text-2xl font-semibold">{clientMetrics.frontendStatus}</p>
+              <p className="mt-1 text-xs text-slate-500">{clientMetrics.frontendLatency ? `${clientMetrics.frontendLatency} ms render` : "Client-side health probe"}</p>
             </div>
             <div className="rounded-3xl bg-muted p-4">
-              <p className="text-sm text-slate-500">Transactions</p>
-              <p className="mt-2 text-2xl font-semibold">{data.stats?.totalTransactions || 0}</p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-slate-500">API Status</p>
+                <Wifi className="h-4 w-4 text-slate-500" />
+              </div>
+              <p className="mt-2 text-2xl font-semibold">{clientMetrics.apiStatus}</p>
+              <p className="mt-1 text-xs text-slate-500">{clientMetrics.apiLatency ? `${clientMetrics.apiLatency} ms ping` : "Waiting for health check"}</p>
             </div>
             <div className="rounded-3xl bg-muted p-4">
-              <p className="text-sm text-slate-500">Monthly Volume</p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-slate-500">Monthly Volume</p>
+                <Activity className="h-4 w-4 text-slate-500" />
+              </div>
               <p className="mt-2 text-2xl font-semibold">{formatCurrency(data.stats?.monthlyVolume || 0, "USD")}</p>
+              <p className="mt-1 text-xs text-slate-500">Overall volume converted to USD</p>
+            </div>
+            <div className="rounded-3xl bg-muted p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-slate-500">User Analytics</p>
+                <Gauge className="h-4 w-4 text-slate-500" />
+              </div>
+              <p className="mt-2 text-2xl font-semibold">{clientMetrics.sessionViews}</p>
+              <p className="mt-1 text-xs text-slate-500">{clientMetrics.totalViews} total admin page views on this browser</p>
+            </div>
+            <div className="rounded-3xl bg-muted p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-slate-500">Client Device</p>
+                <MonitorSmartphone className="h-4 w-4 text-slate-500" />
+              </div>
+              <p className="mt-2 text-2xl font-semibold">{clientMetrics.deviceLabel}</p>
+              <p className="mt-1 text-xs text-slate-500">Connection: {clientMetrics.connectionLabel}</p>
+            </div>
+            <div className="rounded-3xl bg-muted p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-slate-500">Vercel Analytics</p>
+                <Bell className="h-4 w-4 text-slate-500" />
+              </div>
+              <p className="mt-2 text-2xl font-semibold">Enabled</p>
+              <p className="mt-1 text-xs text-slate-500">@vercel/analytics is mounted in the frontend layout</p>
             </div>
           </div>
         </Card>

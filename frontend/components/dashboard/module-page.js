@@ -114,7 +114,7 @@ function SearchableSelect({ field, value, options, onChange, placeholder = "Sele
     <div ref={containerRef} className="relative">
       <button
         type="button"
-        className="flex w-full items-center justify-between rounded-2xl border border-border bg-white px-4 py-3 text-left outline-none transition focus:border-primary"
+        className="flex w-full items-center justify-between rounded-2xl border border-border bg-card px-4 py-3 text-left outline-none transition focus:border-primary"
         onClick={() =>
           setOpen((current) => {
             const nextOpen = !current;
@@ -135,8 +135,8 @@ function SearchableSelect({ field, value, options, onChange, placeholder = "Sele
       </button>
 
       {open ? (
-        <div className="absolute z-20 mt-2 w-full rounded-3xl border border-border bg-white p-3 shadow-xl">
-          <div className="mb-3 flex items-center gap-2 rounded-2xl border border-border bg-slate-50 px-3 py-2">
+        <div className="absolute z-20 mt-2 w-full rounded-3xl border border-border bg-card p-3 shadow-xl">
+          <div className="mb-3 flex items-center gap-2 rounded-2xl border border-border bg-muted px-3 py-2">
             <Search className="h-4 w-4 text-slate-500" />
             <input
               className="w-full bg-transparent text-sm outline-none"
@@ -223,7 +223,7 @@ function IconPicker({ field, value, onChange }) {
               title={option.label}
               aria-label={option.label}
               className={`flex items-center justify-center rounded-2xl border p-3 transition ${
-                active ? "border-primary bg-primary/10 ring-2 ring-primary/20" : "border-border bg-white hover:bg-muted"
+                active ? "border-primary bg-primary/10 ring-2 ring-primary/20" : "border-border bg-card hover:bg-muted"
               }`}
               onClick={() => onChange(option.value)}
             >
@@ -618,18 +618,18 @@ export function ModulePage({
             </div>
           </Card>
 
-          <Card className="overflow-hidden border-border bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+          <Card className="overflow-hidden border-border p-5 shadow-sm">
             <div className="flex items-end justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">{summary.label}</p>
-                <h2 className="mt-2 text-3xl font-semibold text-slate-900 dark:text-slate-100">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] dark:text-slate-400" style={{ color: "var(--module-muted-text)" }}>{summary.label}</p>
+                <h2 className="mt-2 text-3xl font-semibold dark:text-slate-100" style={{ color: "var(--module-strong-text)" }}>
                   {formatCurrency(summary.value || 0, summary.currencyCode || "USD")}
                 </h2>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{summaryDateLabel}</p>
+                <p className="mt-1 text-sm dark:text-slate-400" style={{ color: "var(--module-muted-text)" }}>{summaryDateLabel}</p>
               </div>
-              <div className="rounded-3xl border border-border bg-muted/50 px-4 py-3 text-right dark:border-slate-800 dark:bg-slate-900/70">
-                <p className="text-xs font-medium uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Current View</p>
-                <p className="mt-1 text-sm font-medium text-slate-700 dark:text-slate-300">{pagination?.total || 0} matched records</p>
+              <div className="rounded-3xl border border-border bg-muted/60 px-4 py-3 text-right">
+                <p className="text-xs font-medium uppercase tracking-[0.2em] dark:text-slate-400" style={{ color: "var(--module-muted-text)" }}>Current View</p>
+                <p className="mt-1 text-sm font-medium dark:text-slate-300" style={{ color: "var(--module-strong-text)" }}>{pagination?.total || 0} matched records</p>
               </div>
             </div>
           </Card>
@@ -642,19 +642,28 @@ export function ModulePage({
             <Card
               key={card.key || card.label}
               className={cn(
-                "overflow-hidden border-border/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950",
+                "overflow-hidden border-border/80 bg-card p-5 shadow-sm",
                 twoColumnExtraSummaries && "p-4",
               )}
             >
               <div className={cn("flex items-start justify-between gap-4", twoColumnExtraSummaries && "gap-3")}>
                 <div>
-                  <p className={cn("text-xs font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400", twoColumnExtraSummaries && "text-[11px] tracking-[0.18em]")}>
+                  <p
+                    className={cn("text-xs font-semibold uppercase tracking-[0.22em] dark:text-slate-400", twoColumnExtraSummaries && "text-[11px] tracking-[0.18em]")}
+                    style={{ color: "var(--module-muted-text)" }}
+                  >
                     {card.label}
                   </p>
-                  <p className={cn("mt-2 text-3xl font-semibold text-slate-900 dark:text-slate-100", twoColumnExtraSummaries && "text-[clamp(1.75rem,5vw,2.1rem)] leading-none")}>
+                  <p
+                    className={cn("mt-2 text-3xl font-semibold dark:text-slate-100", twoColumnExtraSummaries && "text-[clamp(1.75rem,5vw,2.1rem)] leading-none")}
+                    style={{ color: "var(--module-strong-text)" }}
+                  >
                     {formatCurrency(card.summary?.value || 0, card.summary?.currencyCode || "USD")}
                   </p>
-                  <p className={cn("mt-1 text-sm text-slate-500 dark:text-slate-400", twoColumnExtraSummaries && "text-xs leading-5")}>
+                  <p
+                    className={cn("mt-1 text-sm dark:text-slate-400", twoColumnExtraSummaries && "text-xs leading-5")}
+                    style={{ color: "var(--module-body-text)" }}
+                  >
                     {card.description || "Overall total across all records"}
                   </p>
                 </div>
@@ -662,7 +671,7 @@ export function ModulePage({
                   className={cn(
                     "rounded-2xl px-3 py-2 text-xs font-semibold",
                     twoColumnExtraSummaries && "min-w-[74px] px-2.5 py-1.5 text-[11px] text-center",
-                    card.badgeClassName || "bg-muted text-slate-600 dark:bg-slate-800 dark:text-slate-300",
+                    card.badgeClassName || "bg-muted text-slate-600 dark:text-slate-300",
                   )}
                 >
                   {card.badge || `${card.total} records`}
@@ -676,21 +685,31 @@ export function ModulePage({
       {showOverallTotal && overallSummary && !compactTopSummaries ? (
         <Card
           className={cn(
-            "overflow-hidden border-primary/10 bg-gradient-to-br from-primary/10 via-white to-emerald-50/70 p-6 shadow-sm dark:border-primary/20 dark:from-primary/15 dark:via-slate-950 dark:to-slate-900",
+            "overflow-hidden p-6 shadow-sm",
             compactTopSummaries && "p-5",
           )}
+          style={{
+            background: "var(--module-overview-surface)",
+            borderColor: "var(--module-overview-border)",
+          }}
         >
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary/80 dark:text-primary/70">Total Overview</p>
-              <h2 className="mt-2 text-3xl font-semibold text-slate-900 dark:text-slate-100">
-                {formatCurrency(overallSummary.value || 0, overallSummary.currencyCode || "USD")}
-              </h2>
-              <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Overall total across all records in this section</p>
+                <h2 className="mt-2 text-3xl font-semibold dark:text-slate-100" style={{ color: "var(--module-strong-text)" }}>
+                  {formatCurrency(overallSummary.value || 0, overallSummary.currencyCode || "USD")}
+                </h2>
+              <p className="mt-1 text-sm dark:text-slate-400" style={{ color: "var(--module-body-text)" }}>Overall total across all records in this section</p>
             </div>
-            <div className="rounded-3xl border border-white/70 bg-white/80 px-4 py-3 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/80">
-              <p className="text-xs font-medium uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{overallSummary.label}</p>
-              <p className="mt-1 text-sm font-medium text-slate-700 dark:text-slate-300">{overallCount} total records</p>
+            <div
+              className="rounded-3xl px-4 py-3 shadow-sm backdrop-blur"
+              style={{
+                background: "var(--module-overview-pill-bg)",
+                border: "1px solid var(--module-overview-pill-border)",
+              }}
+            >
+              <p className="text-xs font-medium uppercase tracking-[0.2em] dark:text-slate-400" style={{ color: "var(--module-muted-text)" }}>{overallSummary.label}</p>
+              <p className="mt-1 text-sm font-medium dark:text-slate-300" style={{ color: "var(--module-strong-text)" }}>{overallCount} total records</p>
             </div>
           </div>
         </Card>
@@ -699,8 +718,8 @@ export function ModulePage({
       <Card className="p-4 sm:p-5 lg:p-6">
         <div className="space-y-5 sm:space-y-6">
           <div>
-            <h2 className="text-xl font-semibold sm:text-2xl">{title}</h2>
-            <p className="mt-1 text-sm text-slate-500">{description}</p>
+            <h2 className="text-xl font-semibold dark:text-slate-100 sm:text-2xl" style={{ color: "var(--module-strong-text)" }}>{title}</h2>
+            <p className="mt-1 text-sm dark:text-slate-400" style={{ color: "var(--module-body-text)" }}>{description}</p>
           </div>
 
           <div className="flex flex-col gap-3">
@@ -709,7 +728,8 @@ export function ModulePage({
                 <label className="relative block">
                   <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <input
-                    className="w-full rounded-2xl border border-border bg-white py-3 pl-11 pr-11 text-sm outline-none transition focus:border-primary dark:bg-slate-950"
+                    className="w-full rounded-2xl border border-border bg-card py-3 pl-11 pr-11 text-sm outline-none transition placeholder:text-slate-500 focus:border-primary dark:text-slate-100 dark:placeholder:text-slate-500"
+                    style={{ color: "var(--module-input-text)" }}
                     placeholder={`Search ${title.toLowerCase()}`}
                     value={filters.search}
                     onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value, page: 1 }))}
@@ -729,7 +749,8 @@ export function ModulePage({
                 <label className="block">
                   <span className="mb-2 block text-xs font-medium uppercase tracking-[0.2em] text-slate-500">Sort by</span>
                   <select
-                    className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm outline-none transition focus:border-primary dark:bg-slate-950"
+                    className="w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm outline-none transition focus:border-primary dark:text-slate-100"
+                    style={{ color: "var(--module-input-text)" }}
                     value={filters.sort}
                     onChange={(event) => setFilters((current) => ({ ...current, sort: event.target.value }))}
                   >
@@ -756,11 +777,12 @@ export function ModulePage({
               <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   {filterFields.map((field) => (
-                    <label key={field.name} className="rounded-2xl border border-border bg-white/80 p-3 shadow-sm dark:bg-slate-950/70 sm:rounded-3xl">
+                    <label key={field.name} className="rounded-2xl border border-border bg-card p-3 shadow-sm sm:rounded-3xl">
                       <span className="mb-2 block text-xs font-medium uppercase tracking-[0.2em] text-slate-500">{field.label}</span>
                       {field.type === "select" ? (
                         <select
-                          className="w-full rounded-xl border border-border bg-white px-3.5 py-3 text-sm outline-none transition focus:border-primary dark:bg-slate-950 sm:rounded-2xl sm:px-4"
+                          className="w-full rounded-xl border border-border bg-card px-3.5 py-3 text-sm outline-none transition focus:border-primary dark:text-slate-100 sm:rounded-2xl sm:px-4"
+                          style={{ color: "var(--module-input-text)" }}
                           value={filters[field.name] ?? ""}
                           onChange={(event) => setFilters((current) => ({ ...current, [field.name]: event.target.value, page: 1 }))}
                         >
@@ -774,7 +796,8 @@ export function ModulePage({
                       ) : (
                         <input
                           type={field.type === "date" ? "date" : "text"}
-                          className="w-full rounded-xl border border-border bg-white px-3.5 py-3 text-sm outline-none transition focus:border-primary dark:bg-slate-950 sm:rounded-2xl sm:px-4"
+                          className="w-full rounded-xl border border-border bg-card px-3.5 py-3 text-sm outline-none transition placeholder:text-slate-500 focus:border-primary dark:text-slate-100 dark:placeholder:text-slate-500 sm:rounded-2xl sm:px-4"
+                          style={{ color: "var(--module-input-text)" }}
                           value={filters[field.name] ?? ""}
                           onChange={(event) => setFilters((current) => ({ ...current, [field.name]: event.target.value, page: 1 }))}
                         />
@@ -786,11 +809,11 @@ export function ModulePage({
                 {summary && !compactTopSummaries ? (
                   <div className="rounded-2xl border border-border bg-muted/40 p-4 sm:rounded-3xl sm:p-5 dark:border-slate-800 dark:bg-slate-900/70">
                     <p className="text-xs font-medium uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{summary.label}</p>
-                    <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">
+                    <p className="mt-2 text-2xl font-semibold dark:text-slate-100" style={{ color: "var(--module-strong-text)" }}>
                       {formatCurrency(summary.value || 0, summary.currencyCode || "USD")}
                     </p>
-                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{summaryDateLabel}</p>
-                    {pagination?.total ? <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{pagination.total} matched records</p> : null}
+                    <p className="mt-1 text-sm dark:text-slate-400" style={{ color: "var(--module-muted-text)" }}>{summaryDateLabel}</p>
+                    {pagination?.total ? <p className="mt-3 text-xs dark:text-slate-400" style={{ color: "var(--module-muted-text)" }}>{pagination.total} matched records</p> : null}
                   </div>
                 ) : null}
               </div>
@@ -799,11 +822,11 @@ export function ModulePage({
             {summary && !filterFields.length ? (
               <div className="rounded-2xl border border-border bg-muted/40 p-4 sm:rounded-3xl sm:p-5 dark:border-slate-800 dark:bg-slate-900/70">
                 <p className="text-xs font-medium uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{summary.label}</p>
-                <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">
+                <p className="mt-2 text-2xl font-semibold dark:text-slate-100" style={{ color: "var(--module-strong-text)" }}>
                   {formatCurrency(summary.value || 0, summary.currencyCode || "USD")}
                 </p>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{summaryDateLabel}</p>
-                {pagination?.total ? <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{pagination.total} matched records</p> : null}
+                <p className="mt-1 text-sm dark:text-slate-400" style={{ color: "var(--module-muted-text)" }}>{summaryDateLabel}</p>
+                {pagination?.total ? <p className="mt-3 text-xs dark:text-slate-400" style={{ color: "var(--module-muted-text)" }}>{pagination.total} matched records</p> : null}
               </div>
             ) : null}
           </div>
@@ -820,12 +843,12 @@ export function ModulePage({
             <div className="grid gap-4 p-3 sm:p-4 md:hidden">
               {items.length ? (
                 items.map((item) => (
-                  <div key={item.id} className="rounded-2xl border border-border bg-white p-4 sm:rounded-3xl">
+                  <div key={item.id} className="rounded-2xl border border-border bg-card p-4 sm:rounded-3xl">
                     <div className="space-y-3">
                       {columns.map((column) => (
                         <div key={column.accessor} className="flex items-start justify-between gap-4">
                           <span className="text-xs font-medium uppercase tracking-[0.2em] text-slate-500">{column.label}</span>
-                          <span className="text-right text-sm font-medium text-slate-900">{renderCardValue(item, column)}</span>
+                          <span className="text-right text-sm font-medium dark:text-slate-100" style={{ color: "var(--module-strong-text)" }}>{renderCardValue(item, column)}</span>
                         </div>
                       ))}
                     </div>
@@ -849,19 +872,19 @@ export function ModulePage({
                 <thead className="bg-muted">
                   <tr>
                     {columns.map((column) => (
-                      <th key={column.accessor} className="px-4 py-3 font-medium text-slate-600">
+                      <th key={column.accessor} className="px-4 py-3 font-medium text-slate-600 dark:text-slate-300">
                         {column.label}
                       </th>
                     ))}
-                    <th className="px-4 py-3 font-medium text-slate-600">Actions</th>
+                    <th className="px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.length ? (
                     items.map((item) => (
-                      <tr key={item.id} className="border-t border-border">
+                      <tr key={item.id} className="border-t border-border dark:border-slate-800">
                         {columns.map((column) => (
-                          <td key={column.accessor} className="px-4 py-3">
+                          <td key={column.accessor} className="px-4 py-3 text-slate-950 dark:text-slate-100">
                             {renderCell(item, column)}
                           </td>
                         ))}
@@ -878,8 +901,8 @@ export function ModulePage({
                       </tr>
                     ))
                   ) : (
-                    <tr className="border-t border-border">
-                      <td colSpan={columns.length + 1} className="px-4 py-10 text-center text-sm text-slate-500">
+                    <tr className="border-t border-border dark:border-slate-800">
+                      <td colSpan={columns.length + 1} className="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
                         No data found
                       </td>
                     </tr>
@@ -931,7 +954,7 @@ export function ModulePage({
               ) : field.type === "file-upload" ? (
                 <div className="space-y-3">
                   <div className="flex flex-wrap gap-3">
-                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800">
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white">
                       <Upload className="h-4 w-4" />
                       {uploadingField === field.name ? "Uploading..." : field.uploadLabel || "Upload file"}
                       <input
@@ -954,7 +977,7 @@ export function ModulePage({
                           href={form[field.name]}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-2 rounded-2xl border border-border bg-white px-4 py-3 text-sm font-medium transition hover:bg-muted"
+                          className="inline-flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm font-medium transition hover:bg-muted dark:text-slate-100"
                         >
                           <ExternalLink className="h-4 w-4" />
                           Open file
@@ -972,7 +995,7 @@ export function ModulePage({
                   </div>
                   <input
                     type="text"
-                    className="w-full rounded-2xl border border-border bg-white px-4 py-3 outline-none"
+                    className="w-full rounded-2xl border border-border bg-card px-4 py-3 text-slate-950 outline-none placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500"
                     value={form[field.name] ?? ""}
                     onChange={(event) => setForm((current) => ({ ...current, [field.name]: event.target.value }))}
                     placeholder={field.placeholder || "Uploaded file URL will appear here"}
@@ -989,7 +1012,7 @@ export function ModulePage({
                   />
                 ) : (
                   <select
-                    className="w-full rounded-2xl border border-border bg-white px-4 py-3 outline-none"
+                    className="w-full rounded-2xl border border-border bg-card px-4 py-3 text-slate-950 outline-none dark:text-slate-100"
                     value={form[field.name] ?? ""}
                     onChange={(event) => setForm((current) => ({ ...current, [field.name]: event.target.value }))}
                   >
@@ -1003,7 +1026,7 @@ export function ModulePage({
                 )
               ) : field.type === "textarea" ? (
                 <textarea
-                  className="min-h-28 w-full rounded-2xl border border-border bg-white px-4 py-3 outline-none"
+                  className="min-h-28 w-full rounded-2xl border border-border bg-card px-4 py-3 text-slate-950 outline-none placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500"
                   value={form[field.name] ?? ""}
                   onChange={(event) => setForm((current) => ({ ...current, [field.name]: event.target.value }))}
                 />
@@ -1011,7 +1034,7 @@ export function ModulePage({
                 <input
                   type={fieldTypeToInput[field.type] || "text"}
                   step={field.type === "number" ? "0.01" : undefined}
-                  className="w-full rounded-2xl border border-border bg-white px-4 py-3 outline-none"
+                  className="w-full rounded-2xl border border-border bg-card px-4 py-3 text-slate-950 outline-none placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500"
                   value={form[field.name] ?? ""}
                   onChange={(event) => {
                     const value = field.type === "checkbox" ? event.target.checked : event.target.value;

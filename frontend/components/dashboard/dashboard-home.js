@@ -120,7 +120,7 @@ export function DashboardHome() {
   return (
     <>
       <div className="space-y-4 min-[390px]:space-y-5 sm:space-y-6">
-        <section className="grid grid-cols-2 gap-3 min-[390px]:gap-4 xl:grid-cols-4">
+        <section className="grid grid-cols-1 gap-3 min-[390px]:gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard label="Balance" value={formatCurrency(stats.totalBalance, stats.currencyCode)} hint="All wallets" icon={Landmark} />
           <MetricCard label="Income" value={formatCurrency(stats.totalIncome, stats.currencyCode)} hint="This month" accent="bg-green-600" icon={ArrowUpRight} />
           <MetricCard label="Expense" value={formatCurrency(stats.totalExpense, stats.currencyCode)} hint="This month" accent="bg-red-600" icon={ArrowDownRight} />

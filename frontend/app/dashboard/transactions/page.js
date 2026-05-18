@@ -44,7 +44,6 @@ export default function TransactionsPage() {
           badgeClassName: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
         },
       ]}
-      twoColumnExtraSummaries
       filterFields={[
         { name: "type", label: "Type", type: "select", options: [{ value: "income", label: "Income" }, { value: "expense", label: "Expense" }, { value: "transfer", label: "Transfer" }] },
         { name: "categoryId", label: "Category", type: "select", lookupKey: "categories" },
