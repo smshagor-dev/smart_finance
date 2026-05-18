@@ -1,22 +1,53 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { Bell, ChevronDown, LogOut, Plus, Search, Shield } from "lucide-react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { Bell, LogOut, Plus, Search, Settings, Shield, User, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
+import { useLiveUpdateListener } from "@/lib/live-client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { logoutUser } from "@/lib/client-auth";
+import { ADMIN_PANEL_ITEMS, SIDEBAR_ITEMS } from "@/lib/constants";
 
 export function Topbar({ user }) {
   const router = useRouter();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [mobileSearch, setMobileSearch] = useState("");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const mobileMenuRef = useRef(null);
   const desktopMenuRef = useRef(null);
   const isAdmin = user?.role === "admin";
   const inAdminPanel = pathname.startsWith("/dashboard/admin");
+  const deferredSearchQuery = useDeferredValue(searchQuery);
+
+  async function loadUnreadCount() {
+    const response = await fetch("/api/notifications?page=1&pageSize=20&sort=newest", { cache: "no-store" });
+    const data = await response.json();
+    setUnreadCount((data.items || []).filter((item) => !item.isRead).length);
+  }
+
+  const searchItems = useMemo(() => {
+    const baseItems = isAdmin ? [...SIDEBAR_ITEMS, ...ADMIN_PANEL_ITEMS] : SIDEBAR_ITEMS;
+    const uniqueItems = Array.from(new Map(baseItems.map((item) => [item.href, item])).values());
+    const normalizedQuery = deferredSearchQuery.trim().toLowerCase();
+
+    if (!normalizedQuery) {
+      return uniqueItems.slice(0, 8);
+    }
+
+    return uniqueItems
+      .map((item) => ({
+        ...item,
+        score: item.label.toLowerCase().startsWith(normalizedQuery) ? 2 : item.label.toLowerCase().includes(normalizedQuery) || item.href.toLowerCase().includes(normalizedQuery) ? 1 : 0,
+      }))
+      .filter((item) => item.score > 0)
+      .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label))
+      .slice(0, 8);
+  }, [deferredSearchQuery, isAdmin]);
 
   useEffect(() => {
     if (!menuOpen) {
@@ -46,10 +77,91 @@ export function Topbar({ user }) {
     };
   }, [menuOpen]);
 
+  useEffect(() => {
+    if (!searchOpen) {
+      return undefined;
+    }
+
+    function handleClickOutside(event) {
+      if (!event.target.closest("[data-dashboard-search]")) {
+        setSearchOpen(false);
+      }
+    }
+
+    function handleEscape(event) {
+      if (event.key === "Escape") {
+        setSearchOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [searchOpen]);
+
+  useEffect(() => {
+    function handleMobileNav(event) {
+      setMobileNavOpen(Boolean(event.detail?.open));
+    }
+
+    window.addEventListener("dashboard-mobile-nav", handleMobileNav);
+
+    return () => {
+      window.removeEventListener("dashboard-mobile-nav", handleMobileNav);
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    fetch("/api/notifications?page=1&pageSize=20&sort=newest", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((data) => {
+        if (active) {
+          setUnreadCount((data.items || []).filter((item) => !item.isRead).length);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useLiveUpdateListener(["notifications"], () => {
+    loadUnreadCount();
+  });
+
   async function handleLogout() {
     await logoutUser();
     router.push("/login");
     router.refresh();
+  }
+
+  function openQuickCreate(type) {
+    window.dispatchEvent(new CustomEvent("dashboard-quick-create", { detail: { type } }));
+  }
+
+  function openNotifications() {
+    setMenuOpen(false);
+    window.dispatchEvent(new CustomEvent("dashboard-notifications-open"));
+  }
+
+  function navigateFromSearch(item) {
+    setSearchOpen(false);
+    setSearchQuery("");
+    router.push(item.href);
+  }
+
+  function handleSearchSubmit(event) {
+    event.preventDefault();
+
+    if (searchItems.length) {
+      navigateFromSearch(searchItems[0]);
+    }
   }
 
   const initials =
@@ -59,26 +171,93 @@ export function Topbar({ user }) {
       .slice(0, 2)
       .map((part) => part[0]?.toUpperCase())
       .join("") || "U";
-
   return (
     <header className="mb-5 flex flex-col gap-4 min-[390px]:gap-5 sm:mb-6 lg:gap-5">
-      <div className="space-y-3 lg:hidden">
-        <div className="sticky top-3 z-20 flex min-h-11 items-center gap-2 pl-12 min-[390px]:pl-14">
-          <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-2xl border border-border bg-white/90 px-3 text-sm text-slate-500 shadow-sm backdrop-blur transition focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10">
-            <Search className="h-4 w-4 shrink-0 text-slate-500" />
-            <input
-              type="search"
-              value={mobileSearch}
-              onChange={(event) => setMobileSearch(event.target.value)}
-              placeholder="Search records, budgets, wallets..."
-              className="w-full min-w-0 border-0 bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
-              aria-label="Search records, budgets, wallets"
-            />
-          </label>
+      <div className="space-y-3 pt-14 min-[390px]:pt-16 lg:hidden">
+        <div
+          className={cn(
+            "fixed top-3 right-4 left-14 z-30 grid min-h-11 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 transition min-[390px]:top-4 min-[390px]:right-5 min-[390px]:left-16 min-[430px]:right-6",
+            mobileNavOpen && "pointer-events-none opacity-0",
+          )}
+        >
+          <div className="relative min-w-0" data-dashboard-search>
+            <form
+              className="flex h-10 min-w-0 items-center gap-2 rounded-2xl border border-border bg-white/90 px-3 text-sm text-slate-500 shadow-sm backdrop-blur transition focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10"
+              onSubmit={handleSearchSubmit}
+            >
+              <Search className="h-4 w-4 shrink-0 text-slate-500" />
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(event) => {
+                  setSearchQuery(event.target.value);
+                  setSearchOpen(true);
+                }}
+                onFocus={() => setSearchOpen(true)}
+                placeholder="Search pages, wallets, budgets..."
+                className="w-full min-w-0 border-0 bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
+                aria-label="Search dashboard pages"
+              />
+              {searchQuery ? (
+                <button
+                  type="button"
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-full text-slate-400 transition hover:bg-muted hover:text-slate-700"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setSearchOpen(false);
+                  }}
+                  aria-label="Clear search"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              ) : null}
+            </form>
+
+            {searchOpen ? (
+              <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-40 overflow-hidden rounded-3xl border border-border bg-white/95 p-2 shadow-2xl backdrop-blur">
+                <div className="px-3 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  {deferredSearchQuery.trim() ? "Search Results" : "Quick Access"}
+                </div>
+                <div className="space-y-1">
+                  {searchItems.length ? (
+                    searchItems.map((item) => (
+                      <button
+                        key={item.href}
+                        type="button"
+                        className={cn(
+                          "flex w-full items-center justify-between rounded-2xl px-3 py-2.5 text-left transition hover:bg-muted",
+                          pathname === item.href && "bg-primary/5",
+                        )}
+                        onClick={() => navigateFromSearch(item)}
+                      >
+                        <span className="text-sm font-medium text-slate-800">{item.label}</span>
+                        <span className="text-xs text-slate-400">{item.href.replace("/dashboard", "") || "/dashboard"}</span>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="rounded-2xl bg-muted/60 px-3 py-3 text-sm text-slate-500">No matching pages found</div>
+                  )}
+                </div>
+              </div>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border bg-white/90 text-slate-700 shadow-sm backdrop-blur transition hover:bg-muted"
+            onClick={openNotifications}
+            aria-label="Open notifications"
+          >
+            <Bell className="h-4 w-4" />
+            {unreadCount ? (
+              <span className="absolute -right-1 -top-1 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-semibold text-white">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            ) : null}
+          </button>
           <div className="relative" ref={mobileMenuRef}>
             <button
               type="button"
-              className="inline-flex h-10 shrink-0 items-center gap-2 rounded-2xl border border-border bg-white/90 px-2.5 shadow-sm backdrop-blur transition hover:bg-muted"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border bg-white/90 shadow-sm backdrop-blur transition hover:bg-muted"
               onClick={() => setMenuOpen((current) => !current)}
               aria-label="Open profile menu"
             >
@@ -88,7 +267,6 @@ export function Topbar({ user }) {
               ) : (
                 <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">{initials}</span>
               )}
-              <ChevronDown className={cn("h-4 w-4 text-slate-500 transition", menuOpen && "rotate-180")} />
             </button>
 
             {menuOpen ? (
@@ -99,6 +277,24 @@ export function Topbar({ user }) {
                 </div>
 
                 <div className="space-y-1 p-2">
+                  <Link
+                    href="/dashboard/profile"
+                    className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-muted"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <User className="h-4 w-4 text-slate-500" />
+                    Profile
+                  </Link>
+
+                  <Link
+                    href="/dashboard/settings"
+                    className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-muted"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <Settings className="h-4 w-4 text-slate-500" />
+                    Settings
+                  </Link>
+
                   {isAdmin ? (
                     <Link
                       href={inAdminPanel ? "/dashboard" : "/dashboard/admin"}
@@ -109,15 +305,6 @@ export function Topbar({ user }) {
                       {inAdminPanel ? "Back to App" : "Admin Panel"}
                     </Link>
                   ) : null}
-
-                  <Link
-                    href="/dashboard/notifications"
-                    className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-muted"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    <Bell className="h-4 w-4 text-slate-500" />
-                    Alerts
-                  </Link>
 
                   <Button variant="ghost" className="h-10 w-full justify-start gap-3 rounded-2xl px-3 text-sm text-slate-700" onClick={handleLogout}>
                     <LogOut className="h-4 w-4 text-slate-500" />
@@ -131,54 +318,128 @@ export function Topbar({ user }) {
 
         <div className="space-y-1.5 pl-1 pr-1 min-[390px]:space-y-2">
           <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500 min-[375px]:text-[11px] min-[430px]:tracking-[0.28em]">Finance Overview</p>
-          <h1 className="max-w-[15ch] text-[1.65rem] font-semibold leading-[1.08] text-slate-900 min-[375px]:text-[1.78rem] min-[430px]:max-w-none min-[430px]:text-[1.95rem]">
+          <h1 className="max-w-full overflow-hidden text-[clamp(1.7rem,5vw,1.95rem)] font-semibold leading-[1.08] text-slate-900 text-ellipsis whitespace-nowrap">
             Welcome back, {user.name}
           </h1>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <Link
-            href="/dashboard/income"
+          <button
+            type="button"
             className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition hover:opacity-90 min-[390px]:h-12"
+            onClick={() => openQuickCreate("income")}
           >
             <Plus className="h-4 w-4" />
             Income
-          </Link>
-          <Link
-            href="/dashboard/expenses"
+          </button>
+          <button
+            type="button"
             className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-border bg-white px-4 text-sm font-medium text-slate-900 shadow-sm transition hover:bg-muted min-[390px]:h-12"
+            onClick={() => openQuickCreate("expense")}
           >
             <Plus className="h-4 w-4" />
             Expense
-          </Link>
+          </button>
         </div>
       </div>
 
       <div className="hidden w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 lg:grid">
-        <div className="mx-auto flex w-full max-w-2xl min-w-0 items-center gap-2 rounded-2xl border border-border bg-white px-3.5 text-sm text-slate-500 shadow-sm h-11 min-[390px]:h-12 min-[390px]:px-4">
-          <Search className="h-4 w-4 shrink-0 text-slate-500" />
-          <span className="truncate text-[13px] min-[390px]:text-sm">Search records, budgets, wallets...</span>
+        <div className="relative w-full max-w-xl min-w-0" data-dashboard-search>
+          <form
+            className="flex h-11 w-full min-w-0 items-center gap-2 rounded-2xl border border-border bg-white px-3.5 text-sm text-slate-500 shadow-sm transition focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10 min-[390px]:h-12 min-[390px]:px-4"
+            onSubmit={handleSearchSubmit}
+          >
+            <Search className="h-4 w-4 shrink-0 text-slate-500" />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(event) => {
+                setSearchQuery(event.target.value);
+                setSearchOpen(true);
+              }}
+              onFocus={() => setSearchOpen(true)}
+              placeholder="Search pages, wallets, budgets..."
+              className="w-full min-w-0 border-0 bg-transparent text-[13px] text-slate-700 outline-none placeholder:text-slate-400 min-[390px]:text-sm"
+              aria-label="Search dashboard pages"
+            />
+            {searchQuery ? (
+              <button
+                type="button"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition hover:bg-muted hover:text-slate-700"
+                onClick={() => {
+                  setSearchQuery("");
+                  setSearchOpen(false);
+                }}
+                aria-label="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            ) : null}
+          </form>
+
+          {searchOpen ? (
+            <div className="absolute left-0 right-0 top-[calc(100%+0.6rem)] z-40 overflow-hidden rounded-3xl border border-border bg-white/95 p-2 shadow-2xl backdrop-blur">
+              <div className="px-3 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                {deferredSearchQuery.trim() ? "Search Results" : "Quick Access"}
+              </div>
+              <div className="space-y-1">
+                {searchItems.length ? (
+                  searchItems.map((item) => (
+                    <button
+                      key={item.href}
+                      type="button"
+                      className={cn(
+                        "flex w-full items-center justify-between rounded-2xl px-3 py-3 text-left transition hover:bg-muted",
+                        pathname === item.href && "bg-primary/5",
+                      )}
+                      onClick={() => navigateFromSearch(item)}
+                    >
+                      <span className="text-sm font-medium text-slate-800">{item.label}</span>
+                      <span className="text-xs text-slate-400">{item.href.replace("/dashboard", "") || "/dashboard"}</span>
+                    </button>
+                  ))
+                ) : (
+                  <div className="rounded-2xl bg-muted/60 px-3 py-3 text-sm text-slate-500">No matching pages found</div>
+                )}
+              </div>
+            </div>
+          ) : null}
         </div>
         <div className="flex items-center justify-end gap-2 min-[390px]:gap-3">
-          <Link
-            href="/dashboard/income"
+          <button
+            type="button"
             className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-primary px-3.5 text-sm font-medium text-primary-foreground shadow-sm transition hover:opacity-90 min-[390px]:h-12 min-[390px]:px-4 lg:min-w-[132px]"
+            onClick={() => openQuickCreate("income")}
           >
             <Plus className="h-4 w-4" />
             <span className="hidden min-[375px]:inline">Income</span>
-          </Link>
-          <Link
-            href="/dashboard/expenses"
+          </button>
+          <button
+            type="button"
             className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-border bg-white px-3.5 text-sm font-medium text-slate-900 shadow-sm transition hover:bg-muted min-[390px]:h-12 min-[390px]:px-4 lg:min-w-[132px]"
+            onClick={() => openQuickCreate("expense")}
           >
             <Plus className="h-4 w-4" />
             <span className="hidden min-[375px]:inline">Expense</span>
-          </Link>
+          </button>
+          <button
+            type="button"
+            className="relative inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-border bg-white text-slate-700 shadow-sm transition hover:bg-muted min-[390px]:h-12 min-[390px]:w-12"
+            onClick={openNotifications}
+            aria-label="Open notifications"
+          >
+            <Bell className="h-4 w-4" />
+            {unreadCount ? (
+              <span className="absolute -right-1 -top-1 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-semibold text-white">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            ) : null}
+          </button>
 
           <div className="relative" ref={desktopMenuRef}>
             <button
               type="button"
-              className="inline-flex h-11 items-center gap-2 rounded-2xl border border-border bg-white px-2.5 shadow-sm transition hover:bg-muted min-[390px]:h-12 min-[390px]:px-3"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-border bg-white shadow-sm transition hover:bg-muted min-[390px]:h-12 min-[390px]:w-12"
               onClick={() => setMenuOpen((current) => !current)}
               aria-label="Open profile menu"
             >
@@ -190,7 +451,6 @@ export function Topbar({ user }) {
                   {initials}
                 </span>
               )}
-              <ChevronDown className={cn("h-4 w-4 text-slate-500 transition", menuOpen && "rotate-180")} />
             </button>
 
             {menuOpen ? (
@@ -201,6 +461,24 @@ export function Topbar({ user }) {
                 </div>
 
                 <div className="space-y-1 p-2">
+                  <Link
+                    href="/dashboard/profile"
+                    className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-muted"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <User className="h-4 w-4 text-slate-500" />
+                    Profile
+                  </Link>
+
+                  <Link
+                    href="/dashboard/settings"
+                    className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-muted"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <Settings className="h-4 w-4 text-slate-500" />
+                    Settings
+                  </Link>
+
                   {isAdmin ? (
                     <Link
                       href={inAdminPanel ? "/dashboard" : "/dashboard/admin"}
@@ -211,15 +489,6 @@ export function Topbar({ user }) {
                       {inAdminPanel ? "Back to App" : "Admin Panel"}
                     </Link>
                   ) : null}
-
-                  <Link
-                    href="/dashboard/notifications"
-                    className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-muted"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    <Bell className="h-4 w-4 text-slate-500" />
-                    Alerts
-                  </Link>
 
                   <Button variant="ghost" className="h-10 w-full justify-start gap-3 rounded-2xl px-3 text-sm text-slate-700" onClick={handleLogout}>
                     <LogOut className="h-4 w-4 text-slate-500" />

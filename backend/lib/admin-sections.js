@@ -1,6 +1,6 @@
 import { getSiteSettings } from "./site-settings.js";
 import { prisma } from "./prisma.js";
-import { formatDate, toNumber } from "./utils.js";
+import { formatCurrency, formatDate, toNumber } from "./utils.js";
 
 function maskValue(value, visible = 4) {
   if (!value) return "-";
@@ -20,7 +20,7 @@ function buildBlock(title, count, columns, rows, emptyMessage) {
 }
 
 function currencyAmount(value, code = "USD") {
-  return `${code} ${toNumber(value).toFixed(2)}`;
+  return formatCurrency(value, code);
 }
 
 export const ADMIN_SECTION_DEFINITIONS = {
@@ -235,6 +235,7 @@ export async function getAdminSectionData(section) {
             select: {
               id: true,
               type: true,
+              originalAmount: true,
               amount: true,
               transactionDate: true,
               user: { select: { name: true, email: true } },
@@ -366,7 +367,7 @@ export async function getAdminSectionData(section) {
             transactions.map((transaction) => [
               transaction.user?.name || transaction.user?.email || "User",
               transaction.type,
-              currencyAmount(transaction.amount, transaction.currency?.code || "USD"),
+              currencyAmount(transaction.originalAmount ?? transaction.amount, transaction.currency?.code || "USD"),
               formatDate(transaction.transactionDate),
             ]),
             "No transactions found",

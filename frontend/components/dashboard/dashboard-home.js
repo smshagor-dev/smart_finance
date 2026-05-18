@@ -1,8 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
+import { ArrowDownRight, ArrowUpRight, Landmark, PiggyBank } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { Modal } from "@/components/ui/modal";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { OverviewCharts } from "@/components/dashboard/overview-charts";
 import { useLiveUpdateListener } from "@/lib/live-client";
@@ -10,6 +14,8 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 
 export function DashboardHome() {
   const [data, setData] = useState(null);
+  const [setupDismissed, setSetupDismissed] = useState(false);
+  const [lookupData, setLookupData] = useState({});
 
   async function loadDashboard() {
     const response = await fetch("/api/dashboard/overview");
@@ -37,6 +43,44 @@ export function DashboardHome() {
     loadDashboard();
   });
 
+  useEffect(() => {
+    function handleRefresh() {
+      loadDashboard();
+    }
+
+    window.addEventListener("dashboard-refresh", handleRefresh);
+    return () => {
+      window.removeEventListener("dashboard-refresh", handleRefresh);
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    function loadLookups() {
+      fetch("/api/dashboard/overview?mode=lookups", { cache: "no-store" })
+        .then((response) => response.json())
+        .then((payload) => {
+          if (active) {
+            setLookupData(payload.lookups || {});
+          }
+        });
+    }
+
+    loadLookups();
+
+    function handleLookupsRefresh() {
+      loadLookups();
+    }
+
+    window.addEventListener("dashboard-lookups-refresh", handleLookupsRefresh);
+
+    return () => {
+      active = false;
+      window.removeEventListener("dashboard-lookups-refresh", handleLookupsRefresh);
+    };
+  }, []);
+
   if (!data) {
     return <LoadingSkeleton rows={6} />;
   }
@@ -47,7 +91,9 @@ export function DashboardHome() {
     totalExpense: data.stats?.totalExpense ?? 0,
     monthlySavings: data.stats?.monthlySavings ?? 0,
     currencyCode: data.stats?.currencyCode || "USD",
+    incomeByCategory: data.stats?.incomeByCategory || [],
     expenseByCategory: data.stats?.expenseByCategory || [],
+    monthComparison: data.stats?.monthComparison || [],
     monthlyTrend: data.stats?.monthlyTrend || [],
   };
   const recentTransactions = data.recentTransactions || [];
@@ -55,50 +101,111 @@ export function DashboardHome() {
   const upcomingBills = data.upcomingBills || [];
   const budgets = data.budgets || [];
   const insights = data.insights || [];
+  const walletOptions = lookupData.wallets || [];
+  const hasWallets = walletOptions.length > 0;
+  const shouldShowSetup = Boolean(data) && !setupDismissed && !hasWallets;
+
+  function openSetup(mode, categoryType = "expense") {
+    setSetupDismissed(true);
+    window.dispatchEvent(
+      new CustomEvent("dashboard-setup-open", {
+        detail: {
+          mode,
+          categoryType,
+        },
+      }),
+    );
+  }
 
   return (
-    <div className="space-y-4 min-[390px]:space-y-5 sm:space-y-6">
-      <section className="grid gap-3 min-[390px]:gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="Total Balance" value={formatCurrency(stats.totalBalance, stats.currencyCode)} hint="Across all wallets" />
-        <MetricCard label="Total Income" value={formatCurrency(stats.totalIncome, stats.currencyCode)} hint="Current month" accent="bg-green-600" />
-        <MetricCard label="Total Expense" value={formatCurrency(stats.totalExpense, stats.currencyCode)} hint="Current month" accent="bg-red-600" />
-        <MetricCard label="Monthly Savings" value={formatCurrency(stats.monthlySavings, stats.currencyCode)} hint="Income minus expense" accent="bg-blue-600" />
-      </section>
+    <>
+      <div className="space-y-4 min-[390px]:space-y-5 sm:space-y-6">
+        <section className="grid grid-cols-2 gap-3 min-[390px]:gap-4 xl:grid-cols-4">
+          <MetricCard label="Balance" value={formatCurrency(stats.totalBalance, stats.currencyCode)} hint="All wallets" icon={Landmark} />
+          <MetricCard label="Income" value={formatCurrency(stats.totalIncome, stats.currencyCode)} hint="This month" accent="bg-green-600" icon={ArrowUpRight} />
+          <MetricCard label="Expense" value={formatCurrency(stats.totalExpense, stats.currencyCode)} hint="This month" accent="bg-red-600" icon={ArrowDownRight} />
+          <MetricCard label="Savings" value={formatCurrency(stats.monthlySavings, stats.currencyCode)} hint="Net this month" accent="bg-blue-600" icon={PiggyBank} />
+        </section>
 
-      <OverviewCharts categoryData={stats.expenseByCategory} trendData={stats.monthlyTrend} />
+        <OverviewCharts incomeCategoryData={stats.incomeByCategory} categoryData={stats.expenseByCategory} comparisonData={stats.monthComparison} trendData={stats.monthlyTrend} />
 
-      <section className="grid gap-4 sm:gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <Card className="p-4 min-[390px]:p-5">
-          <h3 className="text-base font-semibold min-[390px]:text-lg">Recent Transactions</h3>
-          <div className="mt-3 space-y-2.5 min-[390px]:mt-4 min-[390px]:space-y-3">
-            {recentTransactions.length ? (
-              recentTransactions.map((item) => (
-                <div key={item.id} className="flex items-center justify-between gap-3 rounded-2xl bg-muted px-3.5 py-3 min-[390px]:p-4">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium min-[390px]:text-base">{item.category?.name || item.type}</p>
-                    <p className="text-xs text-slate-500 min-[390px]:text-sm">{formatDate(item.transactionDate)}</p>
-                  </div>
-                  <p className={`shrink-0 text-sm font-semibold min-[390px]:text-base ${item.type === "expense" ? "text-red-600" : "text-green-700"}`}>
-                    {item.type === "expense" ? "-" : "+"}
-                    {formatCurrency(item.convertedAmount ?? item.amount, stats.currencyCode)}
-                  </p>
-                </div>
-              ))
-            ) : (
-              <div className="rounded-2xl border border-dashed border-border bg-muted/40 p-5 text-center text-sm text-slate-500">No data found</div>
-            )}
-          </div>
-        </Card>
-
-        <div className="space-y-4 sm:space-y-6">
+        <section className="grid gap-4 sm:gap-6 xl:grid-cols-[1.2fr_0.8fr]">
           <Card className="p-4 min-[390px]:p-5">
-            <h3 className="text-base font-semibold min-[390px]:text-lg">Wallet Balances</h3>
+            <h3 className="text-base font-semibold min-[390px]:text-lg">Recent Transactions</h3>
             <div className="mt-3 space-y-2.5 min-[390px]:mt-4 min-[390px]:space-y-3">
-              {walletSummary.length ? (
-                walletSummary.map((wallet) => (
-                  <div key={wallet.id} className="flex items-center justify-between gap-3 rounded-2xl bg-muted px-3.5 py-3 min-[390px]:p-4">
-                    <p className="min-w-0 truncate text-sm font-medium min-[390px]:text-base">{wallet.name}</p>
-                    <p className="shrink-0 text-sm font-semibold min-[390px]:text-base">{formatCurrency(wallet.displayBalance ?? wallet.balance, stats.currencyCode)}</p>
+              {recentTransactions.length ? (
+                recentTransactions.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between gap-3 rounded-2xl bg-muted px-3.5 py-3 min-[390px]:p-4">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium min-[390px]:text-base">{item.category?.name || item.type}</p>
+                      <p className="text-xs text-slate-500 min-[390px]:text-sm">{formatDate(item.transactionDate)}</p>
+                    </div>
+                    <p className={`shrink-0 text-sm font-semibold min-[390px]:text-base ${item.type === "expense" ? "text-red-600" : "text-green-700"}`}>
+                      {item.type === "expense" ? "-" : "+"}
+                      {formatCurrency(item.convertedAmount ?? item.amount, stats.currencyCode)}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-2xl border border-dashed border-border bg-muted/40 p-5 text-center text-sm text-slate-500">No data found</div>
+              )}
+            </div>
+          </Card>
+
+          <div className="space-y-4 sm:space-y-6">
+            <Card className="p-4 min-[390px]:p-5">
+              <h3 className="text-base font-semibold min-[390px]:text-lg">Wallet Balances</h3>
+              <div className="mt-3 space-y-2.5 min-[390px]:mt-4 min-[390px]:space-y-3">
+                {walletSummary.length ? (
+                  walletSummary.map((wallet) => (
+                    <div key={wallet.id} className="flex items-center justify-between gap-3 rounded-2xl bg-muted px-3.5 py-3 min-[390px]:p-4">
+                      <p className="min-w-0 truncate text-sm font-medium min-[390px]:text-base">{wallet.name}</p>
+                      <p className="shrink-0 text-sm font-semibold min-[390px]:text-base">{formatCurrency(wallet.displayBalance ?? wallet.balance, stats.currencyCode)}</p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-border bg-muted/40 p-5 text-center text-sm text-slate-500">No data found</div>
+                )}
+              </div>
+            </Card>
+
+            <Card className="p-4 min-[390px]:p-5">
+              <h3 className="text-base font-semibold min-[390px]:text-lg">Upcoming Bills</h3>
+              <div className="mt-3 space-y-2.5 min-[390px]:mt-4 min-[390px]:space-y-3">
+                {upcomingBills.length ? (
+                  upcomingBills.map((bill) => (
+                    <div key={bill.id} className="rounded-2xl bg-muted px-3.5 py-3 min-[390px]:p-4">
+                      <p className="text-sm font-medium min-[390px]:text-base">{bill.title}</p>
+                      <p className="mt-1 text-xs text-slate-500 min-[390px]:text-sm">
+                        {formatDate(bill.nextDueDate)} | {formatCurrency(bill.displayAmount ?? bill.amount, stats.currencyCode)}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-500">No upcoming bills.</p>
+                )}
+              </div>
+            </Card>
+          </div>
+        </section>
+
+        <section className="grid gap-4 sm:gap-6 xl:grid-cols-2">
+          <Card className="p-4 min-[390px]:p-5">
+            <h3 className="text-base font-semibold min-[390px]:text-lg">Budget Usage</h3>
+            <div className="mt-3 space-y-3.5 min-[390px]:mt-4 min-[390px]:space-y-4">
+              {budgets.length ? (
+                budgets.map((budget) => (
+                  <div key={budget.id}>
+                    <div className="mb-2 flex items-center justify-between gap-3 text-xs min-[390px]:text-sm">
+                      <span>{budget.category?.name || "Overall Budget"}</span>
+                      <span>{Math.round(budget.progress * 100)}%</span>
+                    </div>
+                    <div className="h-3 rounded-full bg-muted">
+                      <div
+                        className={`h-3 rounded-full ${budget.progress >= 1 ? "bg-red-600" : budget.progress >= 0.8 ? "bg-amber-500" : "bg-primary"}`}
+                        style={{ width: `${Math.min(100, budget.progress * 100)}%` }}
+                      />
+                    </div>
                   </div>
                 ))
               ) : (
@@ -108,66 +215,53 @@ export function DashboardHome() {
           </Card>
 
           <Card className="p-4 min-[390px]:p-5">
-            <h3 className="text-base font-semibold min-[390px]:text-lg">Upcoming Bills</h3>
+            <h3 className="text-base font-semibold min-[390px]:text-lg">AI Insights</h3>
             <div className="mt-3 space-y-2.5 min-[390px]:mt-4 min-[390px]:space-y-3">
-              {upcomingBills.length ? (
-                upcomingBills.map((bill) => (
-                  <div key={bill.id} className="rounded-2xl bg-muted px-3.5 py-3 min-[390px]:p-4">
-                    <p className="text-sm font-medium min-[390px]:text-base">{bill.title}</p>
-                    <p className="mt-1 text-xs text-slate-500 min-[390px]:text-sm">
-                      {formatDate(bill.nextDueDate)} | {formatCurrency(bill.displayAmount ?? bill.amount, stats.currencyCode)}
-                    </p>
+              {insights.length ? (
+                insights.map((insight, index) => (
+                  <div key={`${insight.title}-${index}`} className="rounded-2xl bg-muted px-3.5 py-3 min-[390px]:p-4">
+                    <p className="text-sm font-medium min-[390px]:text-base">{insight.title}</p>
+                    <p className="mt-1 text-xs text-slate-500 min-[390px]:text-sm">{insight.description}</p>
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-slate-500">No upcoming bills.</p>
+                <div className="rounded-2xl border border-dashed border-border bg-muted/40 p-5 text-center text-sm text-slate-500">No data found</div>
               )}
             </div>
           </Card>
+        </section>
+      </div>
+
+      <Modal open={shouldShowSetup} title="Complete Required Setup" onClose={() => setSetupDismissed(true)}>
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">
+            Before creating income or expense records, you need at least one wallet in your account.
+          </p>
+
+          <div className="space-y-3">
+            {!hasWallets ? (
+              <div className="rounded-2xl border border-border bg-muted/40 p-4">
+                <p className="text-sm font-semibold text-slate-900">Wallet missing</p>
+                <p className="mt-1 text-sm text-slate-500">Add at least one wallet so transactions have a destination account.</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button type="button" className="inline-flex rounded-2xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground" onClick={() => openSetup("wallet")}>
+                    Create Wallet
+                  </button>
+                  <button type="button" className="inline-flex rounded-2xl border border-border bg-white px-4 py-2 text-sm font-medium text-slate-900" onClick={() => openSetup("category", "expense")}>
+                    Create Category
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="flex justify-end">
+            <Button type="button" variant="secondary" onClick={() => setSetupDismissed(true)}>
+              Close
+            </Button>
+          </div>
         </div>
-      </section>
-
-      <section className="grid gap-4 sm:gap-6 xl:grid-cols-2">
-        <Card className="p-4 min-[390px]:p-5">
-          <h3 className="text-base font-semibold min-[390px]:text-lg">Budget Usage</h3>
-          <div className="mt-3 space-y-3.5 min-[390px]:mt-4 min-[390px]:space-y-4">
-            {budgets.length ? (
-              budgets.map((budget) => (
-                <div key={budget.id}>
-                  <div className="mb-2 flex items-center justify-between gap-3 text-xs min-[390px]:text-sm">
-                    <span>{budget.category?.name || "Overall Budget"}</span>
-                    <span>{Math.round(budget.progress * 100)}%</span>
-                  </div>
-                  <div className="h-3 rounded-full bg-muted">
-                    <div
-                      className={`h-3 rounded-full ${budget.progress >= 1 ? "bg-red-600" : budget.progress >= 0.8 ? "bg-amber-500" : "bg-primary"}`}
-                      style={{ width: `${Math.min(100, budget.progress * 100)}%` }}
-                    />
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="rounded-2xl border border-dashed border-border bg-muted/40 p-5 text-center text-sm text-slate-500">No data found</div>
-            )}
-          </div>
-        </Card>
-
-        <Card className="p-4 min-[390px]:p-5">
-          <h3 className="text-base font-semibold min-[390px]:text-lg">AI Insights</h3>
-          <div className="mt-3 space-y-2.5 min-[390px]:mt-4 min-[390px]:space-y-3">
-            {insights.length ? (
-              insights.map((insight, index) => (
-                <div key={`${insight.title}-${index}`} className="rounded-2xl bg-muted px-3.5 py-3 min-[390px]:p-4">
-                  <p className="text-sm font-medium min-[390px]:text-base">{insight.title}</p>
-                  <p className="mt-1 text-xs text-slate-500 min-[390px]:text-sm">{insight.description}</p>
-                </div>
-              ))
-            ) : (
-              <div className="rounded-2xl border border-dashed border-border bg-muted/40 p-5 text-center text-sm text-slate-500">No data found</div>
-            )}
-          </div>
-        </Card>
-      </section>
-    </div>
+      </Modal>
+    </>
   );
 }

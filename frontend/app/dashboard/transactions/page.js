@@ -28,6 +28,23 @@ export default function TransactionsPage() {
       ]}
       defaultValues={{ type: "expense", amount: "", categoryId: "", walletId: "", groupId: "", currencyId: "", transactionDate: "", paymentMethod: "", incomeSource: "", attachmentUrl: "", note: "" }}
       lookups={["categories", "wallets", "groups", "currencies"]}
+      extraSummaryCards={[
+        {
+          key: "income-total",
+          label: "Total Income",
+          description: "Overall income",
+          filters: { type: "income" },
+          badgeClassName: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+        },
+        {
+          key: "expense-total",
+          label: "Total Expense",
+          description: "Overall expense",
+          filters: { type: "expense" },
+          badgeClassName: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
+        },
+      ]}
+      twoColumnExtraSummaries
       filterFields={[
         { name: "type", label: "Type", type: "select", options: [{ value: "income", label: "Income" }, { value: "expense", label: "Expense" }, { value: "transfer", label: "Transfer" }] },
         { name: "categoryId", label: "Category", type: "select", lookupKey: "categories" },

@@ -1,6 +1,7 @@
 const { ensureRuntimeEnv } = require("../config/runtime-env.cjs");
 const { PrismaClient } = require("@prisma/client");
 const axios = require("axios");
+const bcrypt = require("bcryptjs");
 
 ensureRuntimeEnv("backend");
 
@@ -85,8 +86,39 @@ async function ensureBaseCurrencies() {
   }
 }
 
+async function ensureAdminUser() {
+  const adminEmail = "smshagor.ru@gmail.com";
+  const adminPassword = "SmShagor1@1";
+  const defaultCurrency = await prisma.currency.findUnique({
+    where: { code: "USD" },
+    select: { id: true },
+  });
+
+  const hashedPassword = await bcrypt.hash(adminPassword, 10);
+
+  await prisma.user.upsert({
+    where: { email: adminEmail },
+    update: {
+      name: "SM Shagor",
+      password: hashedPassword,
+      role: "admin",
+      emailVerified: new Date(),
+      defaultCurrencyId: defaultCurrency?.id || null,
+    },
+    create: {
+      name: "SM Shagor",
+      email: adminEmail,
+      password: hashedPassword,
+      role: "admin",
+      emailVerified: new Date(),
+      defaultCurrencyId: defaultCurrency?.id || null,
+    },
+  });
+}
+
 async function main() {
   await ensureBaseCurrencies();
+  await ensureAdminUser();
   await prisma.$executeRaw`
     INSERT INTO site_settings (
       id,
@@ -105,7 +137,9 @@ async function main() {
       smtp_pass,
       smtp_from,
       require_email_verification,
-      verification_code_expiry_minutes
+      verification_code_expiry_minutes,
+      created_at,
+      updated_at
     ) VALUES (
       ${"global"},
       ${"Finance Tracker"},
@@ -123,7 +157,9 @@ async function main() {
       ${process.env.SMTP_PASS || null},
       ${process.env.SMTP_FROM || null},
       ${true},
-      ${15}
+      ${15},
+      NOW(),
+      NOW()
     )
     ON DUPLICATE KEY UPDATE
       site_name = VALUES(site_name),
@@ -153,7 +189,7 @@ async function main() {
   }
 
   console.log("Seed complete");
-  console.log("Database starts without demo users or sample finance records.");
+  console.log("Admin seeded: smshagor.ru@gmail.com");
 }
 
 main()

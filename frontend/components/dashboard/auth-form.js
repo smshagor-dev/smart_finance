@@ -69,6 +69,22 @@ export function AuthForm({ mode = "login" }) {
         return;
       }
 
+      if (!registerData.requiresVerification) {
+        const result = await loginWithCredentials({
+          email: registerData.email || form.email,
+          password: form.password,
+        });
+
+        if (!result.ok) {
+          setError(result.data?.error || "Login failed");
+          return;
+        }
+
+        router.push("/dashboard");
+        router.refresh();
+        return;
+      }
+
       setVerificationStep(true);
       setVerificationEmail(registerData.email || form.email);
       if (registerData.devVerificationCode) {

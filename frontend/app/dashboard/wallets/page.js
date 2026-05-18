@@ -21,8 +21,9 @@ export default function WalletsPage() {
         { name: "icon", label: "Icon", type: "icon-select", options: WALLET_ICON_OPTIONS },
         { name: "color", label: "Color", type: "text" },
       ]}
-      defaultValues={{ name: "", type: "cash", balance: "", currencyId: "", icon: "wallet", color: "#0f766e" }}
+      defaultValues={{ name: "", type: "cash", balance: "0.00", currencyId: "", icon: "wallet", color: "#0f766e" }}
       lookups={["currencies"]}
+      showOverallTotal
     />
   );
 }

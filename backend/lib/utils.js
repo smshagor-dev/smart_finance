@@ -1,9 +1,3 @@
-import { clsx } from "clsx";
-
-export function cn(...values) {
-  return clsx(values);
-}
-
 export function toNumber(value, fallback = 0) {
   const num = Number(value);
   return Number.isFinite(num) ? num : fallback;

@@ -1,42 +1,33 @@
 "use client";
 
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useMemo } from "react";
+import { toast as sonnerToast } from "sonner";
 
 const ToastContext = createContext(null);
 
 export function ToastProvider({ children }) {
-  const [toasts, setToasts] = useState([]);
-
   const value = useMemo(
     () => ({
       push(message, type = "success") {
-        const id = crypto.randomUUID();
-        setToasts((current) => [...current, { id, message, type }]);
-        setTimeout(() => {
-          setToasts((current) => current.filter((toast) => toast.id !== id));
-        }, 3000);
+        const content = typeof message === "string" ? message.trim() : "";
+        const safeMessage = content || (type === "error" ? "Something went wrong" : "Done");
+
+        if (type === "error") {
+          sonnerToast.error(safeMessage, {
+            duration: 4200,
+          });
+          return;
+        }
+
+        sonnerToast.success(safeMessage, {
+          duration: 3200,
+        });
       },
     }),
     [],
   );
 
-  return (
-    <ToastContext.Provider value={value}>
-      {children}
-      <div className="fixed right-4 bottom-4 z-50 space-y-2">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={`rounded-2xl px-4 py-3 text-sm text-white shadow-lg ${
-              toast.type === "error" ? "bg-red-600" : "bg-slate-900"
-            }`}
-          >
-            {toast.message}
-          </div>
-        ))}
-      </div>
-    </ToastContext.Provider>
-  );
+  return <ToastContext.Provider value={value}>{children}</ToastContext.Provider>;
 }
 
 export function useToast() {

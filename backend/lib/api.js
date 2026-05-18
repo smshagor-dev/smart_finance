@@ -1,5 +1,7 @@
 import { requireUser } from "./auth.js";
+import { convertBetweenCurrencies } from "./currency.js";
 import { prisma } from "./prisma.js";
+import { toNumber } from "./utils.js";
 import {
   aiInsightSchema,
   budgetSchema,
@@ -174,6 +176,177 @@ function sanitizePayload(payload) {
   );
 }
 
+function getCreationNotificationMeta(resource, item) {
+  const actionMap = {
+    transactions: {
+      title: item?.type === "expense" ? "New expense added" : item?.type === "transfer" ? "New transfer added" : "New income added",
+      message: "A new transaction was saved to your account.",
+      type: item?.type === "income" ? "savings" : "balance",
+      actionUrl: "/dashboard",
+    },
+    wallets: {
+      title: "New wallet created",
+      message: `Wallet "${item?.name || "Untitled wallet"}" was added successfully.`,
+      type: "balance",
+      actionUrl: "/dashboard/wallets",
+    },
+    categories: {
+      title: "Category created",
+      message: `Category "${item?.name || "Untitled category"}" is ready to use.`,
+      type: "system",
+      actionUrl: "/dashboard/categories",
+    },
+    budgets: {
+      title: "Budget created",
+      message: "A new budget has been added to your planner.",
+      type: "budget",
+      actionUrl: "/dashboard/budgets",
+    },
+    "savings-goals": {
+      title: "Savings goal created",
+      message: `Goal "${item?.title || "Untitled goal"}" was created successfully.`,
+      type: "savings",
+      actionUrl: "/dashboard/savings-goals",
+    },
+    "savings-contributions": {
+      title: "Savings contribution added",
+      message: "A new savings contribution was recorded.",
+      type: "savings",
+      actionUrl: "/dashboard/savings-goals",
+    },
+    recurring: {
+      title: "Recurring payment created",
+      message: `Recurring payment "${item?.title || "Untitled recurring payment"}" is now active.`,
+      type: "bill",
+      actionUrl: "/dashboard/recurring",
+    },
+    debts: {
+      title: "Debt or loan added",
+      message: `Entry for "${item?.personName || "debt record"}" was created successfully.`,
+      type: "balance",
+      actionUrl: "/dashboard/debts",
+    },
+    "debt-payments": {
+      title: "Debt payment added",
+      message: "A new debt payment was recorded.",
+      type: "balance",
+      actionUrl: "/dashboard/debts",
+    },
+    "ai-insights": {
+      title: "New insight generated",
+      message: item?.title || "A fresh AI insight is ready for review.",
+      type: "insight",
+      actionUrl: "/dashboard",
+    },
+    groups: {
+      title: "Group created",
+      message: `Group "${item?.name || "Untitled group"}" is ready to use.`,
+      type: "system",
+      actionUrl: "/dashboard/groups",
+    },
+    receipts: {
+      title: "Receipt uploaded",
+      message: `File "${item?.originalName || "receipt"}" was uploaded successfully.`,
+      type: "system",
+      actionUrl: "/dashboard/receipts",
+    },
+  };
+
+  return actionMap[resource] || null;
+}
+
+export async function createInsertNotification({ userId, resource, item }) {
+  if (!userId || resource === "notifications" || resource === "currencies") {
+    return;
+  }
+
+  const meta = getCreationNotificationMeta(resource, item);
+  if (!meta) {
+    return;
+  }
+
+  await prisma.notification.create({
+    data: {
+      userId,
+      title: meta.title,
+      message: meta.message,
+      type: meta.type,
+      actionUrl: meta.actionUrl,
+    },
+  });
+
+  publishLiveEvent({ userId, resource: "notifications", action: "created" });
+}
+
+async function buildListSummary(resource, user, where, params) {
+  const defaultCurrencyCode = user.defaultCurrency?.code || "USD";
+  const defaultRate = toNumber(user.defaultCurrency?.exchangeRateToUsd, 1);
+
+  if (resource === "transactions") {
+    const result = await prisma.transaction.aggregate({
+      _sum: { convertedAmount: true },
+      where,
+    });
+
+    return {
+      label:
+        params.type === "income"
+          ? "Total Income"
+          : params.type === "expense"
+            ? "Total Expense"
+            : params.type === "transfer"
+              ? "Total Transfer"
+              : "Total Amount",
+      value: toNumber(result._sum.convertedAmount),
+      currencyCode: defaultCurrencyCode,
+    };
+  }
+
+  if (resource === "wallets") {
+    const wallets = await prisma.wallet.findMany({
+      where,
+      include: { currency: true },
+    });
+
+    return {
+      label: "Total Balance",
+      value: wallets.reduce(
+        (sum, wallet) => sum + convertBetweenCurrencies(wallet.balance, wallet.currency?.exchangeRateToUsd || 1, defaultRate),
+        0,
+      ),
+      currencyCode: defaultCurrencyCode,
+    };
+  }
+
+  if (resource === "budgets") {
+    const result = await prisma.budget.aggregate({
+      _sum: { amount: true },
+      where,
+    });
+
+    return {
+      label: "Total Budget",
+      value: toNumber(result._sum.amount),
+      currencyCode: defaultCurrencyCode,
+    };
+  }
+
+  if (resource === "recurring") {
+    const result = await prisma.recurringPayment.aggregate({
+      _sum: { amount: true },
+      where,
+    });
+
+    return {
+      label: "Total Recurring",
+      value: toNumber(result._sum.amount),
+      currencyCode: defaultCurrencyCode,
+    };
+  }
+
+  return null;
+}
+
 export function createListHandler(resource) {
   return async function GET(request) {
     try {
@@ -186,7 +359,7 @@ export function createListHandler(resource) {
         ...searchWhere(resource, params),
       };
 
-      const [items, total] = await Promise.all([
+      const [items, total, summary] = await Promise.all([
         model.findMany({
           where,
           include: includeMap[resource],
@@ -195,10 +368,12 @@ export function createListHandler(resource) {
           orderBy: sortBy(resource, params.sort),
         }),
         model.count({ where }),
+        buildListSummary(resource, user, where, params),
       ]);
 
       return Response.json({
         items,
+        summary,
         pagination: {
           page: params.page,
           pageSize: params.pageSize,
@@ -257,6 +432,8 @@ export function createPostHandler(resource) {
           include: includeMap[resource],
         });
       }
+
+      await createInsertNotification({ userId: user.id, resource, item });
 
       if (resource === "currencies") {
         publishGlobalLiveEvent({ resource, action: "created" });

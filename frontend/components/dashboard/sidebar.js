@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowRightLeft, Landmark, Menu, Shield } from "lucide-react";
-import { useState } from "react";
+import { ArrowRightLeft, Bell, ChartColumn, CircleUserRound, House, Landmark, Menu, ReceiptText, Shield, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { ADMIN_PANEL_ITEMS, SIDEBAR_ITEMS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -13,11 +13,31 @@ export function Sidebar({ user }) {
   const isAdmin = user?.role === "admin";
   const inAdminPanel = pathname.startsWith("/dashboard/admin");
   const items = inAdminPanel ? ADMIN_PANEL_ITEMS : SIDEBAR_ITEMS;
+  const mobileFooterItems = inAdminPanel
+    ? [
+        { href: "/dashboard/admin", label: "Home", icon: House },
+        { href: "/dashboard/admin/users", label: "Users", icon: CircleUserRound },
+        { href: "/dashboard/admin/activity", label: "Activity", icon: ChartColumn },
+        { href: "/dashboard/admin/site-settings", label: "Settings", icon: Bell },
+      ]
+    : [
+        { href: "/dashboard", label: "Home", icon: House },
+        { href: "/dashboard/transactions", label: "Records", icon: ReceiptText },
+        { href: "/dashboard/budgets", label: "Budgets", icon: ChartColumn },
+        { href: "/dashboard/profile", label: "Profile", icon: CircleUserRound },
+      ];
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("dashboard-mobile-nav", { detail: { open } }));
+  }, [open]);
 
   return (
     <>
       <button
-        className="fixed top-3 left-4 z-40 inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-white/95 shadow-sm backdrop-blur lg:hidden min-[390px]:top-4"
+        className={cn(
+          "fixed top-3 left-4 z-40 inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-white/95 shadow-sm backdrop-blur transition lg:hidden min-[390px]:top-4",
+          open && "pointer-events-none opacity-0",
+        )}
         onClick={() => setOpen((v) => !v)}
         aria-label="Toggle navigation"
       >
@@ -30,6 +50,16 @@ export function Sidebar({ user }) {
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
+        <div className="pointer-events-none absolute top-6 right-[0px] lg:hidden">
+          <button
+            type="button"
+            className="pointer-events-auto inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/15 bg-white/10 text-white shadow-sm backdrop-blur transition hover:bg-white/15"
+            onClick={() => setOpen(false)}
+            aria-label="Close navigation"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
         <div className="mb-8 flex items-center gap-3">
           <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-primary">
             {user?.image ? (
@@ -98,6 +128,41 @@ export function Sidebar({ user }) {
           </div>
         ) : null}
       </aside>
+
+      <div className="fixed inset-x-4 bottom-4 z-30 lg:hidden">
+        <div className="mx-auto flex max-w-md items-center justify-between rounded-[2rem] border border-border bg-white/90 px-3 py-2 shadow-[0_20px_50px_rgba(15,23,42,0.16)] backdrop-blur-xl">
+          {mobileFooterItems.map((item) => {
+            const active =
+              item.href === "/dashboard" || item.href === "/dashboard/admin"
+                ? pathname === item.href
+                : pathname.startsWith(item.href);
+            const Icon = item.icon;
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-[1.35rem] px-2 py-2 text-[11px] font-medium transition",
+                  active ? "bg-primary text-primary-foreground shadow-sm" : "text-slate-500 hover:bg-muted",
+                )}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                <span className="truncate">{item.label}</span>
+              </Link>
+            );
+          })}
+
+          <button
+            type="button"
+            className="ml-2 inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-[1.35rem] border border-border bg-white text-slate-700 shadow-sm transition hover:bg-muted"
+            onClick={() => setOpen(true)}
+            aria-label="Open navigation menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        </div>
+      </div>
     </>
   );
 }

@@ -130,7 +130,7 @@ export function AdminOverview() {
                       {transaction.category?.name || transaction.type} • {formatDate(transaction.transactionDate)}
                     </p>
                   </div>
-                  <p className="font-semibold">{formatCurrency(transaction.convertedAmount ?? transaction.amount, "USD")}</p>
+                  <p className="font-semibold">{formatCurrency(transaction.originalAmount ?? transaction.amount, transaction.currency?.code || "USD")}</p>
                 </Link>
               ))
             ) : (

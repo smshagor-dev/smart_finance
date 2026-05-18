@@ -28,6 +28,7 @@ export default function IncomePage() {
       defaultValues={{ type: "income", amount: "", incomeSource: "", categoryId: "", walletId: "", groupId: "", currencyId: "", transactionDate: "", attachmentUrl: "", note: "" }}
       lookups={["incomeCategories", "wallets", "groups", "currencies"]}
       baseFilters={{ type: "income" }}
+      showOverallTotal
       filterFields={[
         { name: "categoryId", label: "Category", type: "select", lookupKey: "incomeCategories" },
         { name: "walletId", label: "Wallet", type: "select", lookupKey: "wallets" },

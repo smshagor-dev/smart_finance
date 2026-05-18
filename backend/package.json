@@ -14,8 +14,8 @@
     "db:migrate:dev": "node scripts/run-prisma.cjs migrate dev",
     "db:push": "node scripts/run-prisma.cjs db push",
     "db:legacy-setup": "node scripts/run-prisma.cjs generate && node prisma/setup-legacy-mysql.cjs",
-    "db:seed": "node prisma/seed.js",
-    "db:setup": "node scripts/run-prisma.cjs generate && node prisma/setup-legacy-mysql.cjs && node prisma/seed.js"
+    "db:seed": "node prisma/seed.cjs",
+    "db:setup": "node scripts/run-prisma.cjs generate && node prisma/setup-legacy-mysql.cjs && node prisma/seed.cjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",

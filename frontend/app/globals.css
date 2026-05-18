@@ -79,8 +79,13 @@ textarea {
 [data-theme="dark"] .bg-white\/70,
 [data-theme="dark"] .bg-white\/75,
 [data-theme="dark"] .bg-white\/80,
-[data-theme="dark"] .bg-white\/90 {
+[data-theme="dark"] .bg-white\/90,
+[data-theme="dark"] .bg-white\/95 {
   background-color: #101a13 !important;
+}
+
+[data-theme="dark"] .shadow-\[0_20px_50px_rgba\(15\,23\,42\,0\.16\)\] {
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.34) !important;
 }
 
 [data-theme="dark"] .bg-slate-50,

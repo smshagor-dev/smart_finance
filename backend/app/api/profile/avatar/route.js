@@ -1,9 +1,9 @@
-import { mkdir, writeFile } from "fs/promises";
+import { writeFile } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
 import { requireUser } from "../../../../lib/auth.js";
 import { publishLiveEvent } from "../../../../lib/live-events.js";
-import { getUploadDirectory, getUploadUrl } from "../../../../lib/uploads.js";
+import { ensureUploadDirectory, getUploadErrorMessage, getUploadUrl } from "../../../../lib/uploads.js";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
@@ -28,10 +28,8 @@ export async function POST(request) {
 
     const extension = path.extname(file.name) || ".jpg";
     const fileName = `${Date.now()}-${randomUUID()}${extension.toLowerCase()}`;
-    const uploadDirectory = getUploadDirectory("profiles");
+    const uploadDirectory = await ensureUploadDirectory("profiles");
     const filePath = path.join(uploadDirectory, fileName);
-
-    await mkdir(uploadDirectory, { recursive: true });
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
@@ -46,6 +44,9 @@ export async function POST(request) {
       fileType: file.type,
     });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: error.message === "UNAUTHORIZED" ? 401 : 500 });
+    return Response.json(
+      { error: error.message === "UNAUTHORIZED" ? error.message : getUploadErrorMessage(error) },
+      { status: error.message === "UNAUTHORIZED" ? 401 : 500 },
+    );
   }
 }

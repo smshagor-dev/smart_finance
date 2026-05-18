@@ -28,6 +28,8 @@ export default function ExpensesPage() {
       defaultValues={{ type: "expense", amount: "", categoryId: "", walletId: "", groupId: "", currencyId: "", paymentMethod: "", transactionDate: "", attachmentUrl: "", note: "" }}
       lookups={["expenseCategories", "wallets", "groups", "currencies"]}
       baseFilters={{ type: "expense" }}
+      showOverallTotal
+      compactTopSummaries
       filterFields={[
         { name: "categoryId", label: "Category", type: "select", lookupKey: "expenseCategories" },
         { name: "walletId", label: "Wallet", type: "select", lookupKey: "wallets" },

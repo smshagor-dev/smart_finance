@@ -40,6 +40,8 @@ export async function GET(request) {
     const now = new Date();
     const currentMonthStart = startOfMonth(now);
     const currentMonthEnd = endOfMonth(now);
+    const previousMonthStart = startOfMonth(subMonths(now, 1));
+    const previousMonthEnd = endOfMonth(previousMonthStart);
     const sixMonths = eachMonthOfInterval({
       start: startOfMonth(subMonths(now, 5)),
       end: currentMonthStart,
@@ -82,6 +84,30 @@ export async function GET(request) {
     const totalIncome = toNumber(income._sum.convertedAmount);
     const totalExpense = toNumber(expense._sum.convertedAmount);
 
+    const [previousIncome, previousExpense] = await Promise.all([
+      prisma.transaction.aggregate({
+        _sum: { convertedAmount: true },
+        where: { userId: user.id, type: "income", transactionDate: { gte: previousMonthStart, lte: previousMonthEnd } },
+      }),
+      prisma.transaction.aggregate({
+        _sum: { convertedAmount: true },
+        where: { userId: user.id, type: "expense", transactionDate: { gte: previousMonthStart, lte: previousMonthEnd } },
+      }),
+    ]);
+
+    const monthComparison = [
+      {
+        month: format(previousMonthStart, "MMM"),
+        income: toNumber(previousIncome._sum.convertedAmount),
+        expense: toNumber(previousExpense._sum.convertedAmount),
+      },
+      {
+        month: format(currentMonthStart, "MMM"),
+        income: totalIncome,
+        expense: totalExpense,
+      },
+    ];
+
     const monthlyTrend = await Promise.all(
       sixMonths.map(async (monthStart) => {
         const monthEnd = endOfMonth(monthStart);
@@ -104,16 +130,34 @@ export async function GET(request) {
       }),
     );
 
-    const expenseByCategoryRaw = await prisma.transaction.groupBy({
-      by: ["categoryId"],
-      _sum: { convertedAmount: true },
-      where: { userId: user.id, type: "expense", transactionDate: { gte: currentMonthStart, lte: currentMonthEnd } },
-    });
+    const [incomeByCategoryRaw, expenseByCategoryRaw] = await Promise.all([
+      prisma.transaction.groupBy({
+        by: ["categoryId"],
+        _sum: { convertedAmount: true },
+        where: { userId: user.id, type: "income" },
+      }),
+      prisma.transaction.groupBy({
+        by: ["categoryId"],
+        _sum: { convertedAmount: true },
+        where: { userId: user.id, type: "expense" },
+      }),
+    ]);
 
-    const expenseByCategory = expenseByCategoryRaw.map((group) => ({
-      name: categories.find((category) => category.id === group.categoryId)?.name || "Uncategorized",
-      value: toNumber(group._sum.convertedAmount),
-    }));
+    const incomeByCategory = incomeByCategoryRaw
+      .map((group) => ({
+        name: categories.find((category) => category.id === group.categoryId)?.name || "Uncategorized",
+        value: toNumber(group._sum.convertedAmount),
+      }))
+      .filter((group) => group.value > 0)
+      .sort((left, right) => right.value - left.value);
+
+    const expenseByCategory = expenseByCategoryRaw
+      .map((group) => ({
+        name: categories.find((category) => category.id === group.categoryId)?.name || "Uncategorized",
+        value: toNumber(group._sum.convertedAmount),
+      }))
+      .filter((group) => group.value > 0)
+      .sort((left, right) => right.value - left.value);
 
     const budgetsWithUsage = await Promise.all(
       budgets.map(async (budget) => {
@@ -143,7 +187,9 @@ export async function GET(request) {
         monthlySavings: totalIncome - totalExpense,
         currencyCode: defaultCurrency?.code || "USD",
         currencySymbol: defaultCurrency?.symbol || "$",
+        incomeByCategory,
         expenseByCategory,
+        monthComparison,
         monthlyTrend,
       },
       recentTransactions,

@@ -25,6 +25,7 @@ export default function BudgetsPage() {
       ]}
       defaultValues={{ categoryId: "", walletId: "", amount: "", month: new Date().getMonth() + 1, year: new Date().getFullYear(), startDate: "", endDate: "", status: "active" }}
       lookups={["expenseCategories", "wallets"]}
+      showOverallTotal
     />
   );
 }
