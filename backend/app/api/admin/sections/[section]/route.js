@@ -1,11 +1,11 @@
 import { requireAdmin } from "../../../../../lib/auth.js";
 import { getAdminSectionData } from "../../../../../lib/admin-sections.js";
 
-export async function GET(_request, { params }) {
+export async function GET(request, { params }) {
   try {
     await requireAdmin();
     const { section } = await params;
-    const data = await getAdminSectionData(section);
+    const data = await getAdminSectionData(section, request);
 
     if (!data) {
       return Response.json({ error: "Not found" }, { status: 404 });

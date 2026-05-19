@@ -3,7 +3,10 @@ import { buildEmailChangeIdentifier, getPendingEmailChange, issueVerificationCod
 import { publishLiveEvent } from "../../../lib/live-events.js";
 import { prisma } from "../../../lib/prisma.js";
 import { hashPassword, verifyPassword } from "../../../lib/password.js";
+import { removeUploadFileByUrl } from "../../../lib/uploads.js";
 import { profileSchema } from "../../../lib/validators/index.js";
+import { buildOnboardingState } from "../../../lib/auth-session.js";
+import { assertTrustedOrigin } from "../../../lib/security.js";
 
 export async function GET() {
   try {
@@ -18,11 +21,22 @@ export async function GET() {
       id: user.id,
       name: user.name || "",
       email: user.email || "",
-      image: user.image || "",
+      image: user.avatar || user.image || "",
+      avatar: user.avatar || user.image || "",
       role: user.role,
       defaultCurrencyId: user.defaultCurrencyId || "",
       defaultCurrencyCode: user.defaultCurrency?.code || "USD",
       emailVerified: user.emailVerified,
+      registrationProvider: user.registrationProvider,
+      lastLoginProvider: user.lastLoginProvider,
+      lastLoginAt: user.lastLoginAt,
+      authProviders: {
+        email: Boolean(user.password),
+        google: Boolean(user.googleId),
+        facebook: Boolean(user.facebookId),
+        telegram: Boolean(user.telegramId),
+      },
+      onboarding: buildOnboardingState(user),
       pendingEmail: pendingEmail || "",
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
@@ -38,6 +52,7 @@ export async function GET() {
 
 export async function PUT(request) {
   try {
+    assertTrustedOrigin(request);
     const user = await requireUser();
     const payload = profileSchema.parse(await request.json());
 
@@ -56,6 +71,7 @@ export async function PUT(request) {
     const updateData = {
       name: payload.name,
       image: payload.image || null,
+      avatar: payload.image || null,
       defaultCurrencyId: payload.defaultCurrencyId,
       ...(payload.password ? { password: await hashPassword(payload.password) } : {}),
     };
@@ -85,6 +101,10 @@ export async function PUT(request) {
       where: { id: user.id },
       data: updateData,
     });
+
+    if (user.image && user.image !== updateData.image) {
+      await removeUploadFileByUrl(user.image);
+    }
 
     publishLiveEvent({
       userId: user.id,

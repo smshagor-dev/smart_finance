@@ -8,6 +8,7 @@ function parseParams(request) {
     pageSize: Number(searchParams.get("pageSize") || 10),
     search: (searchParams.get("search") || "").trim(),
     role: (searchParams.get("role") || "").trim(),
+    provider: (searchParams.get("provider") || "").trim(),
   };
 }
 
@@ -17,6 +18,11 @@ export async function GET(request) {
     const params = parseParams(request);
     const where = {
       ...(params.role ? { role: params.role } : {}),
+      ...(params.provider
+        ? params.provider === "email"
+          ? { registrationProvider: "email" }
+          : { [`${params.provider}Id`]: { not: null } }
+        : {}),
       ...(params.search
         ? {
             OR: [
@@ -49,7 +55,15 @@ export async function GET(request) {
     ]);
 
     return Response.json({
-      items,
+      items: items.map((user) => ({
+        ...user,
+        linkedProviders: {
+          email: Boolean(user.password),
+          google: Boolean(user.googleId),
+          facebook: Boolean(user.facebookId),
+          telegram: Boolean(user.telegramId),
+        },
+      })),
       pagination: {
         page: params.page,
         pageSize: params.pageSize,

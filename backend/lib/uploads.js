@@ -1,9 +1,8 @@
 import path from "node:path";
-import os from "node:os";
-import { access, mkdir, constants as fsConstants } from "node:fs/promises";
+import { access, mkdir, unlink, constants as fsConstants } from "node:fs/promises";
 import runtimeEnv from "../config/runtime-env.cjs";
 
-const DEFAULT_UPLOADS_ROOT = path.join(os.tmpdir(), "smart-finance", "uploads");
+const DEFAULT_UPLOADS_ROOT = path.join(runtimeEnv.backendRoot, "storage", "uploads");
 
 export function getUploadsRoot() {
   return process.env.UPLOADS_ROOT
@@ -26,6 +25,10 @@ export function getUploadUrl(bucket, fileName) {
   return `/uploads/${bucket}/${fileName}`;
 }
 
+export function isManagedUploadUrl(fileUrl) {
+  return String(fileUrl || "").trim().startsWith("/uploads/");
+}
+
 export function getUploadFilePathFromUrl(fileUrl) {
   const relativePath = String(fileUrl || "").replace(/^\/+/, "");
   if (!relativePath.startsWith("uploads/")) {
@@ -33,6 +36,24 @@ export function getUploadFilePathFromUrl(fileUrl) {
   }
 
   return path.join(getUploadsRoot(), relativePath.replace(/^uploads[\\/]/, ""));
+}
+
+export async function removeUploadFileByUrl(fileUrl) {
+  if (!isManagedUploadUrl(fileUrl)) {
+    return false;
+  }
+
+  try {
+    const filePath = getUploadFilePathFromUrl(fileUrl);
+    await unlink(filePath);
+    return true;
+  } catch (error) {
+    if (error?.code === "ENOENT") {
+      return false;
+    }
+
+    throw error;
+  }
 }
 
 export function getUploadErrorMessage(error) {

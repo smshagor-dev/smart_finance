@@ -96,7 +96,15 @@ export async function GET(_request, { params }) {
       return Response.json({ error: "Not found" }, { status: 404 });
     }
 
-    return Response.json(user);
+    return Response.json({
+      ...user,
+      linkedProviders: {
+        email: Boolean(user.password),
+        google: Boolean(user.googleId),
+        facebook: Boolean(user.facebookId),
+        telegram: Boolean(user.telegramId),
+      },
+    });
   } catch (error) {
     return Response.json({ error: error.message }, { status: errorStatus(error.message) });
   }

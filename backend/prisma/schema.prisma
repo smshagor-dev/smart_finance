@@ -13,6 +13,19 @@ enum UserRole {
   user
 }
 
+enum AuthProvider {
+  email
+  google
+  facebook
+  telegram
+}
+
+enum SocialAuthProvider {
+  google
+  facebook
+  telegram
+}
+
 enum CategoryType {
   income
   expense
@@ -95,8 +108,17 @@ model User {
   email                String?               @unique
   password             String?
   image                String?
+  avatar               String?               @map("avatar")
   role                 UserRole              @default(user)
+  registrationProvider AuthProvider          @default(email) @map("registration_provider")
+  googleId             String?               @unique @map("google_id")
+  facebookId           String?               @unique @map("facebook_id")
+  telegramId           String?               @unique @map("telegram_id")
   emailVerified        DateTime?             @map("email_verified_at")
+  providerMeta         Json?                 @map("provider_meta")
+  lastLoginProvider    AuthProvider?         @map("last_login_provider")
+  lastLoginAt          DateTime?             @map("last_login_at")
+  loginCount           Int                   @default(0) @map("login_count")
   defaultCurrencyId    String?
   createdAt            DateTime              @default(now()) @map("created_at")
   updatedAt            DateTime              @updatedAt @map("updated_at")
@@ -121,7 +143,10 @@ model User {
   financeGroups        FinanceGroup[]        @relation("FinanceGroupOwner")
   groupInvites         FinanceGroupInvite[]
   groupMessages        GroupMessage[]
+  auditLogs            AuditLog[]            @relation("AuditLogActor")
 
+  @@index([registrationProvider])
+  @@index([lastLoginProvider])
   @@index([defaultCurrencyId])
   @@map("users")
 }
@@ -516,4 +541,40 @@ model SiteSetting {
   updatedAt                     DateTime @updatedAt @map("updated_at")
 
   @@map("site_settings")
+}
+
+model AuthProviderSetting {
+  id                 String             @id @default(cuid())
+  provider           SocialAuthProvider @unique
+  clientId           String?            @map("client_id")
+  clientSecret       String?            @db.Text @map("client_secret")
+  botToken           String?            @db.Text @map("bot_token")
+  callbackUrl        String?            @db.Text @map("callback_url")
+  successRedirectUrl String?            @db.Text @map("success_redirect_url")
+  failureRedirectUrl String?            @db.Text @map("failure_redirect_url")
+  scopes             String?            @db.Text
+  configJson         Json?              @map("config_json")
+  isEnabled          Boolean            @default(false) @map("is_enabled")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  @@map("auth_provider_settings")
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String?  @map("actor_user_id")
+  action      String
+  entityType  String   @map("entity_type")
+  entityId    String?  @map("entity_id")
+  description String?  @db.Text
+  ipAddress   String?  @map("ip_address")
+  meta        Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+  actorUser   User?    @relation("AuditLogActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([actorUserId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
 }

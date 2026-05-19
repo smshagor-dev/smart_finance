@@ -325,6 +325,7 @@ async function handleUploadsRequest(req, res, pathname, requestId) {
     }
 
     setCorsHeaders(req, res);
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
     res.setHeader("X-Request-Id", requestId);
     res.setHeader("Content-Type", getContentType(filePath));
     res.setHeader("Content-Length", stat.size);

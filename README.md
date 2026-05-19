@@ -1,34 +1,37 @@
 # Smart Finance
 
-Smart Finance is a full-stack personal finance and admin management platform built as a monorepo with a separate frontend and backend.
+Smart Finance is a full-stack finance tracking and admin operations platform built as a monorepo with separate `frontend` and `backend` apps.
 
-It includes user authentication, wallets, income and expense tracking, budgets, savings goals, debts, receipts, reports, notifications, groups, currencies, AI insights, and an admin dashboard for platform-wide monitoring and configuration.
+It includes personal finance tracking, receipts and attachments, group collaboration, dynamic site settings, provider-managed authentication, onboarding flows, admin analytics, and production-ready upload handling.
 
 ## Overview
 
-- `frontend`: Next.js app for all user and admin UI
+- `frontend`: Next.js app for user and admin UI
 - `backend`: custom Node.js API runtime with Prisma and MySQL
-- `prisma`: schema, migration, and seed flow live under `backend/prisma`
-- `uploads`: backend serves uploaded files from its configured upload directory
+- `backend/prisma`: schema, migrations, and seed flow
+- `backend/storage/uploads`: default persistent upload directory
 
 ## Main Features
 
 - Email/password authentication
-- Optional email verification flow
+- Social authentication with Google, Facebook, and Telegram
+- Unified auth session flow across email and social providers
+- Email verification and social email-completion flow
+- Default currency onboarding before dashboard access
+- Dynamic auth provider management from the admin panel
 - User profile and avatar upload
 - Wallet management with currency support
-- Income and expense tracking
-- Transaction filtering, search, and exports
+- Income, expense, transfer, and recurring finance tracking
+- Transaction filtering, search, summaries, and exports
 - Budget planning
 - Savings goals and contributions
 - Debt tracking and payments
 - Receipt and attachment uploads
-- Recurring finance entries
 - Group and invite-based collaboration
 - In-app notifications and live updates
 - Reports and dashboard analytics
 - AI insights module
-- Admin dashboard, users, finance, activity, platform, and site settings
+- Admin dashboard, users, activity, finance, integrity, collaboration, platform, and site settings
 
 ## Tech Stack
 
@@ -46,7 +49,7 @@ It includes user authentication, wallets, income and expense tracking, budgets, 
 - Node.js
 - Prisma
 - MySQL
-- JWT/session-based auth utilities
+- Cookie/session-based auth utilities
 - Nodemailer
 - Zod validation
 
@@ -54,18 +57,19 @@ It includes user authentication, wallets, income and expense tracking, budgets, 
 
 ```text
 smart_finance/
-|-- frontend/                   # Next.js frontend app
-|   |-- app/                    # App Router pages
-|   |-- components/             # Dashboard, auth, UI components
-|   |-- lib/                    # Frontend helpers and API client code
-|   `-- public/                 # Static assets
-|-- backend/                    # Custom API server
-|   |-- app/api/                # File-based API routes
-|   |-- config/                 # Runtime environment config
-|   |-- lib/                    # Business logic, auth, helpers
-|   |-- prisma/                 # Prisma schema, migrations, seed
-|   |-- api/                    # Vercel function entry
-|   `-- server.js               # Local/VM backend server entry
+|-- frontend/
+|   |-- app/
+|   |-- components/
+|   |-- lib/
+|   `-- public/
+|-- backend/
+|   |-- app/api/
+|   |-- config/
+|   |-- lib/
+|   |-- prisma/
+|   |-- storage/uploads/
+|   |-- api/
+|   `-- server.js
 |-- docker-compose.production.yml
 |-- ecosystem.config.cjs
 `-- package.json
@@ -110,15 +114,21 @@ smart_finance/
 - `/dashboard/admin/finance`
 - `/dashboard/admin/platform`
 - `/dashboard/admin/site-settings`
+- `/dashboard/admin/auth-providers`
 - `/dashboard/admin/access`
 - `/dashboard/admin/collaboration`
 - `/dashboard/admin/integrity`
 
 ## API Overview
 
-Backend routes are located in [backend/app/api](/d:/project/smart_finance/backend/app/api) and cover:
+Backend routes are located in `backend/app/api` and cover:
 
 - `auth`
+- `auth/providers`
+- `auth/google`
+- `auth/facebook`
+- `auth/telegram`
+- `auth/complete-email`
 - `profile`
 - `wallets`
 - `categories`
@@ -159,8 +169,8 @@ npm install
 
 Create these files from the examples:
 
-- [frontend/.env.example](/d:/project/smart_finance/frontend/.env.example) -> `frontend/.env`
-- [backend/.env.example](/d:/project/smart_finance/backend/.env.example) -> `backend/.env`
+- `frontend/.env.example` -> `frontend/.env`
+- `backend/.env.example` -> `backend/.env`
 
 ### 3. Set backend environment
 
@@ -172,6 +182,7 @@ At minimum, configure:
 - `DB_USER`
 - `DB_PASSWORD`
 - `AUTH_SECRET`
+- `AUTH_PROVIDER_SECRET_ENCRYPTION_KEY`
 - `FRONTEND_URL`
 - `APP_URL`
 - `CORS_ORIGIN`
@@ -275,10 +286,10 @@ BACKEND_PORT="4000"
 FRONTEND_URL="https://app.example.com"
 CORS_ORIGIN="https://app.example.com"
 TRUST_PROXY="true"
-UPLOADS_ROOT="/app/backend/storage/uploads"
 
 APP_URL="https://app.example.com"
 AUTH_SECRET="replace-with-a-long-random-secret-at-least-32-characters"
+AUTH_PROVIDER_SECRET_ENCRYPTION_KEY="replace-with-a-different-strong-random-secret-at-least-32-characters"
 SESSION_COOKIE_DOMAIN=".example.com"
 SESSION_COOKIE_SAME_SITE="Lax"
 SESSION_COOKIE_SECURE="true"
@@ -302,15 +313,31 @@ SMTP_FROM=""
 SMTP_FORCE_DELIVERY="false"
 ```
 
+## Authentication Providers
+
+Provider credentials are managed from the database and admin panel, not from provider-specific `.env` keys.
+
+Supported providers:
+
+- Google OAuth
+- Facebook OAuth
+- Telegram Login
+
+Important:
+
+- keep `AUTH_PROVIDER_SECRET_ENCRYPTION_KEY` configured in backend env
+- secrets are encrypted before database storage
+- callback and redirect URLs are managed from the admin UI
+
 ## Database
 
-Prisma files live in [backend/prisma](/d:/project/smart_finance/backend/prisma).
+Prisma files live in `backend/prisma`.
 
 Important files:
 
-- [schema.prisma](/d:/project/smart_finance/backend/prisma/schema.prisma)
-- [seed.cjs](/d:/project/smart_finance/backend/prisma/seed.cjs)
-- [setup-legacy-mysql.cjs](/d:/project/smart_finance/backend/prisma/setup-legacy-mysql.cjs)
+- `backend/prisma/schema.prisma`
+- `backend/prisma/seed.cjs`
+- `backend/prisma/setup-legacy-mysql.cjs`
 
 Useful commands:
 
@@ -332,7 +359,15 @@ Uploads are handled by the backend and served through:
 - `/api/receipts`
 - `/api/admin/site-assets`
 
-For stable production hosting, set a persistent `UPLOADS_ROOT`.
+Default storage path:
+
+- `backend/storage/uploads`
+
+Files are served to the frontend through:
+
+- `/uploads/{bucket}/{filename}`
+
+For VPS or PM2 deployment, the default path is already usable as long as it stays writable and persistent.
 
 ## Production
 
@@ -340,8 +375,9 @@ Production expectations:
 
 - use real `https://` domains
 - set a strong `AUTH_SECRET`
+- set a strong `AUTH_PROVIDER_SECRET_ENCRYPTION_KEY`
 - run migrations before serving traffic
-- use a persistent upload directory
+- keep upload storage persistent and writable
 - verify `FRONTEND_URL`, `APP_URL`, and `CORS_ORIGIN`
 
 Validation and startup:
@@ -356,7 +392,7 @@ npm run start:frontend
 
 ## PM2 Deployment
 
-This repo includes [ecosystem.config.cjs](/d:/project/smart_finance/ecosystem.config.cjs).
+This repo includes `ecosystem.config.cjs`.
 
 Start with:
 
@@ -364,13 +400,25 @@ Start with:
 pm2 start ecosystem.config.cjs
 ```
 
+Typical manual PM2 flow:
+
+```bash
+npm install
+npm run check:env
+npm run build
+npm run db:migrate
+pm2 start npm --name smart-finance-backend -- run start:backend
+pm2 start npm --name smart-finance-frontend -- run start:frontend
+pm2 save
+```
+
 ## Docker Deployment
 
 Container deployment is available through:
 
-- [docker-compose.production.yml](/d:/project/smart_finance/docker-compose.production.yml)
-- [frontend/Dockerfile](/d:/project/smart_finance/frontend/Dockerfile)
-- [backend/Dockerfile](/d:/project/smart_finance/backend/Dockerfile)
+- `docker-compose.production.yml`
+- `frontend/Dockerfile`
+- `backend/Dockerfile`
 
 Run:
 
@@ -388,57 +436,17 @@ Vercel should be configured as two separate projects:
 Important:
 
 - Vercel does not deploy this repo by running the Dockerfiles
-- use [frontend/vercel.json](/d:/project/smart_finance/frontend/vercel.json)
-- use [backend/vercel.json](/d:/project/smart_finance/backend/vercel.json)
-- backend is adapted for Vercel through [backend/api/index.js](/d:/project/smart_finance/backend/api/index.js) and [backend/lib/vercel-handler.js](/d:/project/smart_finance/backend/lib/vercel-handler.js)
-
-### Frontend Vercel project
-
-- Root Directory: `frontend`
-- Framework Preset: `Next.js`
-- Install Command: `npm install`
-- Build Command: `npm run build`
-
-Required env:
-
-- `APP_URL=https://your-frontend-domain`
-- `NEXT_PUBLIC_API_BASE_URL=https://your-backend-domain`
-- `INTERNAL_API_BASE_URL=https://your-backend-domain`
-
-### Backend Vercel project
-
-- Root Directory: `backend`
-- Framework Preset: `Other`
-- Install Command: `npm install`
-- Build Command: `npm run build`
-
-Required env:
-
-- `NODE_ENV=production`
-- `AUTH_SECRET=strong-secret-at-least-32-chars`
-- `FRONTEND_URL=https://your-frontend-domain`
-- `APP_URL=https://your-frontend-domain`
-- `CORS_ORIGIN=https://your-frontend-domain`
-- `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
-- or `DATABASE_URL`
-
-### Vercel deploy order
-
-1. Deploy `backend`
-2. Copy the backend production domain
-3. Add that backend domain to the frontend env vars
-4. Deploy `frontend`
-
-### Important Vercel upload note
-
-Vercel local filesystem storage is not persistent. Uploads may not survive redeploys or instance recycling. For durable production uploads on Vercel, use external storage such as S3, Cloudinary, or Vercel Blob.
+- use `frontend/vercel.json`
+- use `backend/vercel.json`
+- backend is adapted for Vercel through `backend/api/index.js` and `backend/lib/vercel-handler.js`
+- Vercel local filesystem storage is not persistent, so use external object storage there
 
 ## Notes
 
-- `smart_finance_front_push` exists in the repo as a deployment copy/work area
 - the main active app folders are `frontend` and `backend`
-- frontend rewrites API calls to the backend using its configured base URL
+- frontend resolves uploaded assets through the backend base URL
 - backend runtime validates production environment variables before start
+- uploaded files should live on persistent storage in production
 
 ## License
 

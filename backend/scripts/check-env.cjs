@@ -19,7 +19,7 @@ try {
         dbPort: databaseConfig.port,
         dbName: databaseConfig.name,
         hasAuthSecret: Boolean(process.env.AUTH_SECRET),
-        uploadsRoot: process.env.UPLOADS_ROOT || "frontend/public/uploads",
+        uploadsRoot: process.env.UPLOADS_ROOT || "backend/storage/uploads",
       },
       null,
       2,

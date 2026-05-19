@@ -11,6 +11,8 @@ const isValidHttpUrl = (value) => {
     return false;
   }
 };
+const isUploadOrHttpUrl = (value) => !value || value.startsWith("/uploads/") || isValidHttpUrl(value);
+const isRedirectValue = (value) => !value || value.startsWith("/") || isValidHttpUrl(value);
 
 export const registerSchema = z.object({
   name: z.string().trim().min(2).max(80),
@@ -26,6 +28,38 @@ export const registerSchema = z.object({
 export const loginSchema = z.object({
   email: z.email(),
   password: z.string().min(8).max(64),
+});
+
+export const authProviderSettingSchema = z.object({
+  provider: z.enum(["google", "facebook", "telegram"]),
+  clientId: optionalString,
+  clientSecret: optionalString,
+  botToken: optionalString,
+  callbackUrl: z.string().trim().optional().nullable().refine((value) => !value || isValidHttpUrl(value), {
+    message: "Callback URL must be a valid absolute URL",
+  }),
+  successRedirectUrl: z.string().trim().optional().nullable().refine((value) => isRedirectValue(value), {
+    message: "Success redirect must be a relative path or valid URL",
+  }),
+  failureRedirectUrl: z.string().trim().optional().nullable().refine((value) => isRedirectValue(value), {
+    message: "Failure redirect must be a relative path or valid URL",
+  }),
+  scopes: optionalString,
+  configJson: z.record(z.string(), z.any()).optional().nullable(),
+  isEnabled: z.boolean().optional().default(false),
+});
+
+export const providerConnectionTestSchema = z.object({
+  provider: z.enum(["google", "facebook", "telegram"]),
+});
+
+export const completeSocialEmailSchema = z.object({
+  email: z.email(),
+});
+
+export const verifySocialEmailLinkSchema = z.object({
+  email: z.email(),
+  code: z.string().trim().length(6),
 });
 
 export const categorySchema = z.object({
@@ -55,7 +89,9 @@ export const transactionSchema = z.object({
   note: optionalString,
   transactionDate: requiredDate,
   paymentMethod: optionalString,
-  attachmentUrl: optionalString,
+  attachmentUrl: z.string().trim().optional().nullable().refine((value) => isUploadOrHttpUrl(value), {
+    message: "Attachment must be an uploaded file or a valid URL",
+  }),
   currencyId: optionalString,
   exchangeRate: z.coerce.number().optional().nullable(),
   convertedAmount: z.coerce.number().optional().nullable(),
@@ -196,7 +232,7 @@ export const verifyEmailSchema = z.object({
 export const profileSchema = z.object({
   name: z.string().trim().min(2).max(80),
   email: z.email(),
-  image: z.string().trim().refine((value) => value === "" || value.startsWith("/uploads/") || isValidHttpUrl(value), {
+  image: z.string().trim().refine((value) => isUploadOrHttpUrl(value), {
     message: "Image must be an uploaded file or a valid URL",
   }).optional().or(z.literal("")),
   defaultCurrencyId: z.string().trim().min(1),
@@ -219,10 +255,10 @@ export const siteSettingsSchema = z.object({
   seoTitle: optionalString,
   seoDescription: optionalString,
   seoKeywords: optionalString,
-  logoUrl: z.string().trim().optional().nullable().refine((value) => !value || value.startsWith("/uploads/") || isValidHttpUrl(value), {
+  logoUrl: z.string().trim().optional().nullable().refine((value) => isUploadOrHttpUrl(value), {
     message: "Logo must be an uploaded file or a valid URL",
   }),
-  iconUrl: z.string().trim().optional().nullable().refine((value) => !value || value.startsWith("/uploads/") || isValidHttpUrl(value), {
+  iconUrl: z.string().trim().optional().nullable().refine((value) => isUploadOrHttpUrl(value), {
     message: "Icon must be an uploaded file or a valid URL",
   }),
   supportEmail: z.email().optional().nullable().or(z.literal("")),

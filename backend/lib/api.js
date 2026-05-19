@@ -29,6 +29,7 @@ import {
 import { getAccessibleGroupIds } from "./groups.js";
 import { publishGlobalLiveEvent, publishLiveEvent } from "./live-events.js";
 import { createErrorResponse } from "./http-error.js";
+import { removeUploadFileByUrl } from "./uploads.js";
 
 const includeMap = {
   categories: {},
@@ -163,6 +164,8 @@ function sortBy(resource, sort) {
         ? "contributionDate"
         : resource === "debt-payments"
           ? "paymentDate"
+          : resource === "receipts"
+            ? "uploadedAt"
           : "createdAt";
 
   if (sort === "oldest") return { [field]: "asc" };
@@ -543,6 +546,10 @@ export function createDeleteHandler(resource) {
           return Response.json({ error: "Default categories cannot be deleted" }, { status: 403 });
         }
         await modelMap[resource].delete({ where: { id } });
+
+        if (resource === "receipts" && existing.fileUrl) {
+          await removeUploadFileByUrl(existing.fileUrl);
+        }
       }
 
       if (resource === "currencies") {

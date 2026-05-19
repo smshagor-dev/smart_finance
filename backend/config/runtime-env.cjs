@@ -247,6 +247,11 @@ function validateProductionEnv() {
     throw new Error("AUTH_SECRET must be set to a strong unique value in production");
   }
 
+  const providerEncryptionKey = process.env.AUTH_PROVIDER_SECRET_ENCRYPTION_KEY || "";
+  if (!providerEncryptionKey || providerEncryptionKey.length < 32) {
+    throw new Error("AUTH_PROVIDER_SECRET_ENCRYPTION_KEY must be set to a strong unique value in production");
+  }
+
   validateDatabaseEnv();
   validateSessionEnv();
   validateProductionUrl("FRONTEND_URL", process.env.FRONTEND_URL || "");

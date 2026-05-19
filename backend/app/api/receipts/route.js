@@ -1,5 +1,6 @@
 import { writeFile } from "fs/promises";
 import path from "path";
+import { randomUUID } from "crypto";
 import { createInsertNotification, createListHandler } from "../../../lib/api.js";
 import { requireUser } from "../../../lib/auth.js";
 import { publishLiveEvent } from "../../../lib/live-events.js";
@@ -45,7 +46,9 @@ export async function POST(request) {
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const fileName = `${Date.now()}-${file.name.replace(/\s+/g, "-")}`;
+    const extension = path.extname(file.name) || ".bin";
+    const baseName = path.basename(file.name, extension).replace(/[^a-zA-Z0-9-_]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "") || "receipt";
+    const fileName = `${Date.now()}-${randomUUID()}-${baseName}${extension.toLowerCase()}`;
     const uploadDirectory = await ensureUploadDirectory("receipts");
     const filePath = path.join(uploadDirectory, fileName);
     await writeFile(filePath, buffer);

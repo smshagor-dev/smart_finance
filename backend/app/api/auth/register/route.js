@@ -5,9 +5,12 @@ import { ensureUserFinanceSetup } from "../../../../lib/user.js";
 import { registerSchema } from "../../../../lib/validators/index.js";
 import { issueVerificationCode } from "../../../../lib/verification.js";
 import { createErrorResponse } from "../../../../lib/http-error.js";
+import { assertTrustedOrigin, getDeviceTypeFromUserAgent } from "../../../../lib/security.js";
+import { createAuditLog } from "../../../../lib/audit.js";
 
 export async function POST(request) {
   try {
+    assertTrustedOrigin(request);
     const payload = registerSchema.parse(await request.json());
     const exists = await prisma.user.findUnique({ where: { email: payload.email } });
     if (exists) {
@@ -24,12 +27,26 @@ export async function POST(request) {
         email: payload.email,
         password,
         role: isFirstUser ? "admin" : "user",
+        registrationProvider: "email",
         emailVerified: siteSettings.requireEmailVerification ? null : new Date(),
         defaultCurrencyId: payload.defaultCurrencyId || (await prisma.currency.findUnique({ where: { code: "USD" } }))?.id || null,
       },
     });
 
     await ensureUserFinanceSetup(user.id, user.defaultCurrencyId);
+    await createAuditLog({
+      actorUserId: user.id,
+      action: "auth.register",
+      entityType: "user",
+      entityId: user.id,
+      description: "User registered with email and password",
+      meta: {
+        provider: "email",
+        deviceType: getDeviceTypeFromUserAgent(request.headers.get("user-agent")),
+        requiresVerification: siteSettings.requireEmailVerification,
+      },
+      request,
+    });
     let verificationDelivery = null;
     if (siteSettings.requireEmailVerification) {
       verificationDelivery = await issueVerificationCode({
@@ -59,6 +76,7 @@ export async function POST(request) {
         error.name === "ZodError"
           ? error.message
           : "Registration failed. Please check your email settings and try again.",
+      status: error.message === "FORBIDDEN_ORIGIN" ? 403 : undefined,
     });
   }
 }

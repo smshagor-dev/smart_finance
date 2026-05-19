@@ -1,6 +1,7 @@
 import { addDays, addMonths, addWeeks, addYears, endOfMonth, startOfMonth, subMonths } from "date-fns";
 import { prisma } from "./prisma.js";
 import { convertBetweenCurrencies } from "./currency.js";
+import { removeUploadFileByUrl } from "./uploads.js";
 import { toNumber } from "./utils.js";
 
 function transactionEffect(type, amount) {
@@ -163,6 +164,11 @@ export async function updateTransactionWithBalance(userId, id, data) {
     });
 
     await adjustWalletBalance(tx, updated.walletId, transactionEffect(updated.type, updated.amount));
+
+    if (existing.attachmentUrl && existing.attachmentUrl !== updated.attachmentUrl) {
+      await removeUploadFileByUrl(existing.attachmentUrl);
+    }
+
     return updated;
   });
 }
@@ -194,6 +200,11 @@ export async function deleteTransactionWithBalance(userId, id) {
 
     await tx.transaction.delete({ where: { id } });
     await adjustWalletBalance(tx, existing.walletId, -transactionEffect(existing.type, existing.amount));
+
+    if (existing.attachmentUrl) {
+      await removeUploadFileByUrl(existing.attachmentUrl);
+    }
+
     return existing;
   });
 }

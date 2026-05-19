@@ -25,6 +25,7 @@ export async function GET(request) {
     if (mode === "lookups") {
       return Response.json({
         lookups: {
+          defaultCurrencyId: user.defaultCurrencyId || "",
           wallets: wallets.map((wallet) => ({ id: wallet.id, name: wallet.name })),
           categories: categories.map((category) => ({ id: category.id, name: `${category.name} (${category.type})` })),
           incomeCategories: categories.filter((category) => category.type === "income").map((category) => ({ id: category.id, name: category.name })),

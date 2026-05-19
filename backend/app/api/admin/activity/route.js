@@ -31,9 +31,9 @@ export async function GET(request) {
     await requireAdmin();
     const params = buildSearchParams(request);
 
-    const [users, transactions, groups, messages, receipts, notifications] = await Promise.all([
+    const [users, transactions, groups, messages, receipts, notifications, auditLogs] = await Promise.all([
       prisma.user.findMany({
-        select: { id: true, name: true, email: true, role: true, createdAt: true },
+        select: { id: true, name: true, email: true, role: true, createdAt: true, registrationProvider: true },
         orderBy: { createdAt: "desc" },
         take: 30,
       }),
@@ -79,6 +79,13 @@ export async function GET(request) {
         orderBy: { createdAt: "desc" },
         take: 20,
       }),
+      prisma.auditLog.findMany({
+        include: {
+          actorUser: { select: { id: true, name: true, email: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 40,
+      }),
     ]);
 
     const items = [
@@ -86,7 +93,7 @@ export async function GET(request) {
         id: `user-${user.id}`,
         type: "user",
         title: "New account registered",
-        description: `${user.name || "Unnamed user"} joined with ${user.role} access`,
+        description: `${user.name || "Unnamed user"} joined with ${user.role} access via ${user.registrationProvider || "email"}`,
         timestamp: user.createdAt,
         user: { id: user.id, name: user.name, email: user.email },
         href: `/dashboard/admin/users/${user.id}`,
@@ -135,6 +142,20 @@ export async function GET(request) {
         timestamp: notification.createdAt,
         user: notification.user,
         href: notification.actionUrl || "/dashboard/notifications",
+      })),
+      ...auditLogs.map((log) => ({
+        id: `audit-${log.id}`,
+        type: "auth",
+        title: log.action.replace(/\./g, " "),
+        description: log.description || `${log.entityType} updated`,
+        timestamp: log.createdAt,
+        user: log.actorUser,
+        href:
+          log.entityType === "user" && log.entityId
+            ? `/dashboard/admin/users/${log.entityId}`
+            : log.entityType === "auth_provider_setting"
+              ? "/dashboard/admin/auth-providers"
+              : "/dashboard/admin/activity",
       })),
     ]
       .filter((entry) => (!params.type ? true : entry.type === params.type))

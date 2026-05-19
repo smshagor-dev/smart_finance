@@ -23,6 +23,302 @@ function currencyAmount(value, code = "USD") {
   return formatCurrency(value, code);
 }
 
+const FINANCE_BLOCK_PAGE_SIZE = 10;
+
+const FINANCE_BLOCKS = [
+  {
+    key: "wallets",
+    title: "Wallets",
+    model: prisma.wallet,
+    count: () => prisma.wallet.count(),
+    orderBy: { createdAt: "desc" },
+    searchFields: ["name", "type", "user.name", "user.email", "currency.code"],
+    select: {
+      id: true,
+      name: true,
+      type: true,
+      balance: true,
+      user: { select: { name: true, email: true } },
+      currency: { select: { code: true } },
+    },
+    columns: ["Wallet", "User", "Balance", "Currency"],
+    mapRow: (wallet) => [
+      wallet.name,
+      wallet.user?.name || wallet.user?.email || "User",
+      currencyAmount(wallet.balance, wallet.currency?.code || "USD"),
+      wallet.currency?.code || "-",
+    ],
+    emptyMessage: "No wallets found",
+  },
+  {
+    key: "categories",
+    title: "Categories",
+    model: prisma.category,
+    count: () => prisma.category.count(),
+    orderBy: { updatedAt: "desc" },
+    searchFields: ["name", "type", "user.name", "user.email"],
+    select: {
+      id: true,
+      name: true,
+      type: true,
+      isDefault: true,
+      user: { select: { name: true, email: true } },
+    },
+    columns: ["Category", "Type", "Owner", "Default"],
+    mapRow: (category) => [
+      category.name,
+      category.type,
+      category.user?.name || category.user?.email || "Global",
+      category.isDefault ? "Yes" : "No",
+    ],
+    emptyMessage: "No categories found",
+  },
+  {
+    key: "budgets",
+    title: "Budgets",
+    model: prisma.budget,
+    count: () => prisma.budget.count(),
+    orderBy: { updatedAt: "desc" },
+    searchFields: ["status", "user.name", "user.email"],
+    select: {
+      id: true,
+      amount: true,
+      month: true,
+      year: true,
+      status: true,
+      user: { select: { name: true, email: true } },
+    },
+    columns: ["User", "Amount", "Period", "Status"],
+    mapRow: (budget) => [
+      budget.user?.name || budget.user?.email || "User",
+      currencyAmount(budget.amount),
+      `${budget.month}/${budget.year}`,
+      budget.status,
+    ],
+    emptyMessage: "No budgets found",
+  },
+  {
+    key: "transactions",
+    title: "Transactions",
+    model: prisma.transaction,
+    count: () => prisma.transaction.count(),
+    orderBy: { createdAt: "desc" },
+    searchFields: ["type", "note", "incomeSource", "user.name", "user.email", "currency.code"],
+    select: {
+      id: true,
+      type: true,
+      originalAmount: true,
+      amount: true,
+      transactionDate: true,
+      user: { select: { name: true, email: true } },
+      currency: { select: { code: true } },
+    },
+    columns: ["User", "Type", "Amount", "Date"],
+    mapRow: (transaction) => [
+      transaction.user?.name || transaction.user?.email || "User",
+      transaction.type,
+      currencyAmount(transaction.originalAmount ?? transaction.amount, transaction.currency?.code || "USD"),
+      formatDate(transaction.transactionDate),
+    ],
+    emptyMessage: "No transactions found",
+  },
+  {
+    key: "recurringPayments",
+    title: "Recurring Payments",
+    model: prisma.recurringPayment,
+    count: () => prisma.recurringPayment.count(),
+    orderBy: { nextDueDate: "asc" },
+    searchFields: ["title", "status", "user.name", "user.email"],
+    select: {
+      id: true,
+      title: true,
+      amount: true,
+      nextDueDate: true,
+      status: true,
+      user: { select: { name: true, email: true } },
+    },
+    columns: ["Title", "User", "Amount", "Next due"],
+    mapRow: (payment) => [
+      payment.title,
+      payment.user?.name || payment.user?.email || "User",
+      currencyAmount(payment.amount),
+      formatDate(payment.nextDueDate),
+    ],
+    emptyMessage: "No recurring payments",
+  },
+  {
+    key: "savingsGoals",
+    title: "Savings Goals",
+    model: prisma.savingsGoal,
+    count: () => prisma.savingsGoal.count(),
+    orderBy: { updatedAt: "desc" },
+    searchFields: ["title", "status", "note", "user.name", "user.email"],
+    select: {
+      id: true,
+      title: true,
+      currentAmount: true,
+      targetAmount: true,
+      status: true,
+      user: { select: { name: true, email: true } },
+    },
+    columns: ["Goal", "User", "Progress", "Status"],
+    mapRow: (goal) => [
+      goal.title,
+      goal.user?.name || goal.user?.email || "User",
+      `${currencyAmount(goal.currentAmount)} / ${currencyAmount(goal.targetAmount)}`,
+      goal.status,
+    ],
+    emptyMessage: "No savings goals",
+  },
+  {
+    key: "savingsContributions",
+    title: "Savings Contributions",
+    model: prisma.savingsContribution,
+    count: () => prisma.savingsContribution.count(),
+    orderBy: { contributionDate: "desc" },
+    searchFields: ["user.name", "user.email", "savingsGoal.title"],
+    select: {
+      id: true,
+      amount: true,
+      contributionDate: true,
+      user: { select: { name: true, email: true } },
+      savingsGoal: { select: { title: true } },
+    },
+    columns: ["Goal", "User", "Amount", "Date"],
+    mapRow: (contribution) => [
+      contribution.savingsGoal?.title || "Goal",
+      contribution.user?.name || contribution.user?.email || "User",
+      currencyAmount(contribution.amount),
+      formatDate(contribution.contributionDate),
+    ],
+    emptyMessage: "No savings contributions",
+  },
+  {
+    key: "debtLoans",
+    title: "Debt Loans",
+    model: prisma.debtLoan,
+    count: () => prisma.debtLoan.count(),
+    orderBy: { updatedAt: "desc" },
+    searchFields: ["personName", "status", "note", "user.name", "user.email"],
+    select: {
+      id: true,
+      personName: true,
+      amount: true,
+      status: true,
+      user: { select: { name: true, email: true } },
+    },
+    columns: ["Person", "User", "Amount", "Status"],
+    mapRow: (loan) => [
+      loan.personName,
+      loan.user?.name || loan.user?.email || "User",
+      currencyAmount(loan.amount),
+      loan.status,
+    ],
+    emptyMessage: "No debt loans",
+  },
+  {
+    key: "debtPayments",
+    title: "Debt Payments",
+    model: prisma.debtPayment,
+    count: () => prisma.debtPayment.count(),
+    orderBy: { paymentDate: "desc" },
+    searchFields: ["user.name", "user.email", "debtLoan.personName"],
+    select: {
+      id: true,
+      amount: true,
+      paymentDate: true,
+      user: { select: { name: true, email: true } },
+      debtLoan: { select: { personName: true } },
+    },
+    columns: ["Loan", "User", "Amount", "Date"],
+    mapRow: (payment) => [
+      payment.debtLoan?.personName || "Loan",
+      payment.user?.name || payment.user?.email || "User",
+      currencyAmount(payment.amount),
+      formatDate(payment.paymentDate),
+    ],
+    emptyMessage: "No debt payments",
+  },
+  {
+    key: "currencies",
+    title: "Currencies",
+    model: prisma.currency,
+    count: () => prisma.currency.count(),
+    orderBy: { code: "asc" },
+    searchFields: ["code", "name", "symbol"],
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      symbol: true,
+      exchangeRateToUsd: true,
+      isActive: true,
+      lastSyncedAt: true,
+    },
+    columns: ["Code", "Rate to USD", "Active", "Last synced"],
+    mapRow: (currency) => [
+      currency.code,
+      toNumber(currency.exchangeRateToUsd).toFixed(6),
+      currency.isActive ? "Yes" : "No",
+      formatDate(currency.lastSyncedAt),
+    ],
+    emptyMessage: "No currencies found",
+  },
+];
+
+function buildNestedContainsWhere(path, search) {
+  const keys = path.split(".");
+  if (keys.length === 1) {
+    return { [path]: { contains: search } };
+  }
+
+  const [head, ...rest] = keys;
+  return {
+    [head]: buildNestedContainsWhere(rest.join("."), search),
+  };
+}
+
+function getFinanceBlockParams(request, key) {
+  const searchParams = new URL(request.url).searchParams;
+  return {
+    page: Math.max(1, Number(searchParams.get(`${key}Page`) || 1)),
+    search: String(searchParams.get(`${key}Search`) || "").trim(),
+  };
+}
+
+async function buildFinanceBlock(config, request) {
+  const params = getFinanceBlockParams(request, config.key);
+  const where = params.search
+    ? {
+        OR: config.searchFields.map((field) => buildNestedContainsWhere(field, params.search)),
+      }
+    : undefined;
+  const total = await config.model.count({ where });
+  const items = await config.model.findMany({
+    where,
+    select: config.select,
+    orderBy: config.orderBy,
+    skip: (params.page - 1) * FINANCE_BLOCK_PAGE_SIZE,
+    take: FINANCE_BLOCK_PAGE_SIZE,
+  });
+
+  return {
+    key: config.key,
+    title: config.title,
+    count: total,
+    columns: config.columns,
+    rows: items.map(config.mapRow),
+    emptyMessage: config.emptyMessage,
+    search: params.search,
+    pagination: {
+      page: params.page,
+      pageSize: FINANCE_BLOCK_PAGE_SIZE,
+      total,
+      totalPages: Math.ceil(total / FINANCE_BLOCK_PAGE_SIZE) || 1,
+    },
+  };
+}
+
 export const ADMIN_SECTION_DEFINITIONS = {
   integrity: {
     title: "Integrity Watch",
@@ -46,7 +342,7 @@ export const ADMIN_SECTION_DEFINITIONS = {
   },
 };
 
-export async function getAdminSectionData(section) {
+export async function getAdminSectionData(section, request = null) {
   switch (section) {
     case "integrity": {
       const [usersPendingVerification, uncategorizedTransactions, receiptsWithoutTransactions, walletsWithoutCurrency] = await Promise.all([
@@ -193,258 +489,24 @@ export async function getAdminSectionData(section) {
       };
     }
     case "finance": {
-      const [totalTransactions, totalCurrencies, wallets, categories, budgets, transactions, recurringPayments, savingsGoals, savingsContributions, debtLoans, debtPayments, currencies] =
-        await Promise.all([
-          prisma.transaction.count(),
-          prisma.currency.count(),
-          prisma.wallet.findMany({
-            select: {
-              id: true,
-              name: true,
-              balance: true,
-              user: { select: { name: true, email: true } },
-              currency: { select: { code: true } },
-            },
-            orderBy: { createdAt: "desc" },
-            take: 8,
-          }),
-          prisma.category.findMany({
-            select: {
-              id: true,
-              name: true,
-              type: true,
-              isDefault: true,
-              user: { select: { name: true, email: true } },
-            },
-            orderBy: { updatedAt: "desc" },
-            take: 8,
-          }),
-          prisma.budget.findMany({
-            select: {
-              id: true,
-              amount: true,
-              month: true,
-              year: true,
-              status: true,
-              user: { select: { name: true, email: true } },
-            },
-            orderBy: { updatedAt: "desc" },
-            take: 8,
-          }),
-          prisma.transaction.findMany({
-            select: {
-              id: true,
-              type: true,
-              originalAmount: true,
-              amount: true,
-              transactionDate: true,
-              user: { select: { name: true, email: true } },
-              currency: { select: { code: true } },
-            },
-            orderBy: { createdAt: "desc" },
-            take: 8,
-          }),
-          prisma.recurringPayment.findMany({
-            select: {
-              id: true,
-              title: true,
-              amount: true,
-              nextDueDate: true,
-              status: true,
-              user: { select: { name: true, email: true } },
-            },
-            orderBy: { nextDueDate: "asc" },
-            take: 8,
-          }),
-          prisma.savingsGoal.findMany({
-            select: {
-              id: true,
-              title: true,
-              currentAmount: true,
-              targetAmount: true,
-              status: true,
-              user: { select: { name: true, email: true } },
-            },
-            orderBy: { updatedAt: "desc" },
-            take: 8,
-          }),
-          prisma.savingsContribution.findMany({
-            select: {
-              id: true,
-              amount: true,
-              contributionDate: true,
-              user: { select: { name: true, email: true } },
-              savingsGoal: { select: { title: true } },
-            },
-            orderBy: { contributionDate: "desc" },
-            take: 8,
-          }),
-          prisma.debtLoan.findMany({
-            select: {
-              id: true,
-              personName: true,
-              amount: true,
-              status: true,
-              user: { select: { name: true, email: true } },
-            },
-            orderBy: { updatedAt: "desc" },
-            take: 8,
-          }),
-          prisma.debtPayment.findMany({
-            select: {
-              id: true,
-              amount: true,
-              paymentDate: true,
-              user: { select: { name: true, email: true } },
-              debtLoan: { select: { personName: true } },
-            },
-            orderBy: { paymentDate: "desc" },
-            take: 8,
-          }),
-          prisma.currency.findMany({
-            select: {
-              id: true,
-              code: true,
-              exchangeRateToUsd: true,
-              isActive: true,
-              lastSyncedAt: true,
-            },
-            orderBy: { code: "asc" },
-            take: 8,
-          }),
-        ]);
+      const [totalTransactions, totalCurrencies, totalWallets, totalRecurring, blocks] = await Promise.all([
+        prisma.transaction.count(),
+        prisma.currency.count(),
+        prisma.wallet.count(),
+        prisma.recurringPayment.count(),
+        Promise.all(FINANCE_BLOCKS.map((config) => buildFinanceBlock(config, request))),
+      ]);
 
       return {
         id: section,
         ...ADMIN_SECTION_DEFINITIONS[section],
         highlights: [
-          { label: "Wallets", value: wallets.length, hint: "Recent wallet records" },
+          { label: "Wallets", value: totalWallets, hint: "Total wallet records" },
           { label: "Transactions", value: totalTransactions, hint: "Full ledger size" },
-          { label: "Recurring", value: recurringPayments.length, hint: "Upcoming automated flows" },
+          { label: "Recurring", value: totalRecurring, hint: "Upcoming automated flows" },
           { label: "Currencies", value: totalCurrencies, hint: "Exchange-rate catalog" },
         ],
-        blocks: [
-          buildBlock(
-            "Wallets",
-            wallets.length,
-            ["Wallet", "User", "Balance", "Currency"],
-            wallets.map((wallet) => [
-              wallet.name,
-              wallet.user?.name || wallet.user?.email || "User",
-              currencyAmount(wallet.balance, wallet.currency?.code || "USD"),
-              wallet.currency?.code || "-",
-            ]),
-            "No wallets found",
-          ),
-          buildBlock(
-            "Categories",
-            categories.length,
-            ["Category", "Type", "Owner", "Default"],
-            categories.map((category) => [
-              category.name,
-              category.type,
-              category.user?.name || category.user?.email || "Global",
-              category.isDefault ? "Yes" : "No",
-            ]),
-            "No categories found",
-          ),
-          buildBlock(
-            "Budgets",
-            budgets.length,
-            ["User", "Amount", "Period", "Status"],
-            budgets.map((budget) => [
-              budget.user?.name || budget.user?.email || "User",
-              currencyAmount(budget.amount),
-              `${budget.month}/${budget.year}`,
-              budget.status,
-            ]),
-            "No budgets found",
-          ),
-          buildBlock(
-            "Transactions",
-            totalTransactions,
-            ["User", "Type", "Amount", "Date"],
-            transactions.map((transaction) => [
-              transaction.user?.name || transaction.user?.email || "User",
-              transaction.type,
-              currencyAmount(transaction.originalAmount ?? transaction.amount, transaction.currency?.code || "USD"),
-              formatDate(transaction.transactionDate),
-            ]),
-            "No transactions found",
-          ),
-          buildBlock(
-            "Recurring Payments",
-            recurringPayments.length,
-            ["Title", "User", "Amount", "Next due"],
-            recurringPayments.map((payment) => [
-              payment.title,
-              payment.user?.name || payment.user?.email || "User",
-              currencyAmount(payment.amount),
-              formatDate(payment.nextDueDate),
-            ]),
-            "No recurring payments",
-          ),
-          buildBlock(
-            "Savings Goals",
-            savingsGoals.length,
-            ["Goal", "User", "Progress", "Status"],
-            savingsGoals.map((goal) => [
-              goal.title,
-              goal.user?.name || goal.user?.email || "User",
-              `${currencyAmount(goal.currentAmount)} / ${currencyAmount(goal.targetAmount)}`,
-              goal.status,
-            ]),
-            "No savings goals",
-          ),
-          buildBlock(
-            "Savings Contributions",
-            savingsContributions.length,
-            ["Goal", "User", "Amount", "Date"],
-            savingsContributions.map((contribution) => [
-              contribution.savingsGoal?.title || "Goal",
-              contribution.user?.name || contribution.user?.email || "User",
-              currencyAmount(contribution.amount),
-              formatDate(contribution.contributionDate),
-            ]),
-            "No savings contributions",
-          ),
-          buildBlock(
-            "Debt Loans",
-            debtLoans.length,
-            ["Person", "User", "Amount", "Status"],
-            debtLoans.map((loan) => [
-              loan.personName,
-              loan.user?.name || loan.user?.email || "User",
-              currencyAmount(loan.amount),
-              loan.status,
-            ]),
-            "No debt loans",
-          ),
-          buildBlock(
-            "Debt Payments",
-            debtPayments.length,
-            ["Loan", "User", "Amount", "Date"],
-            debtPayments.map((payment) => [
-              payment.debtLoan?.personName || "Loan",
-              payment.user?.name || payment.user?.email || "User",
-              currencyAmount(payment.amount),
-              formatDate(payment.paymentDate),
-            ]),
-            "No debt payments",
-          ),
-          buildBlock(
-            "Currencies",
-            totalCurrencies,
-            ["Code", "Rate to USD", "Active", "Last synced"],
-            currencies.map((currency) => [
-              currency.code,
-              toNumber(currency.exchangeRateToUsd).toFixed(6),
-              currency.isActive ? "Yes" : "No",
-              formatDate(currency.lastSyncedAt),
-            ]),
-            "No currencies found",
-          ),
-        ],
+        blocks,
       };
     }
     case "collaboration": {

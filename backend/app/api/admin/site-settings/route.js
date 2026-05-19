@@ -1,6 +1,7 @@
 import { requireAdmin } from "../../../../lib/auth.js";
 import { publishGlobalLiveEvent } from "../../../../lib/live-events.js";
 import { ensureSiteSettings, saveSiteSettings } from "../../../../lib/site-settings.js";
+import { removeUploadFileByUrl } from "../../../../lib/uploads.js";
 import { siteSettingsPatchSchema, siteSettingsSchema } from "../../../../lib/validators/index.js";
 
 function sanitizePayload(payload) {
@@ -24,9 +25,17 @@ export async function PUT(request) {
   try {
     await requireAdmin();
     const payload = sanitizePayload(await request.json());
+    const currentSettings = await ensureSiteSettings();
     const data = siteSettingsSchema.parse(payload);
 
     const settings = await saveSiteSettings(data);
+
+    if (currentSettings.logoUrl && currentSettings.logoUrl !== settings.logoUrl) {
+      await removeUploadFileByUrl(currentSettings.logoUrl);
+    }
+    if (currentSettings.iconUrl && currentSettings.iconUrl !== settings.iconUrl) {
+      await removeUploadFileByUrl(currentSettings.iconUrl);
+    }
 
     publishGlobalLiveEvent({ resource: "site-settings", action: "updated" });
 
@@ -49,6 +58,13 @@ export async function PATCH(request) {
     };
 
     const settings = await saveSiteSettings(data);
+
+    if (currentSettings.logoUrl && currentSettings.logoUrl !== settings.logoUrl) {
+      await removeUploadFileByUrl(currentSettings.logoUrl);
+    }
+    if (currentSettings.iconUrl && currentSettings.iconUrl !== settings.iconUrl) {
+      await removeUploadFileByUrl(currentSettings.iconUrl);
+    }
 
     publishGlobalLiveEvent({ resource: "site-settings", action: "updated" });
 
