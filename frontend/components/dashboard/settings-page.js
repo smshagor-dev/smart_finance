@@ -9,6 +9,14 @@ import { useLiveUpdateListener } from "@/lib/live-client";
 import { applyTheme } from "@/lib/theme-client";
 import { useToast } from "@/components/ui/toast-provider";
 
+function getCurrentTheme() {
+  if (typeof document !== "undefined") {
+    return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+  }
+
+  return "light";
+}
+
 export function SettingsPage() {
   const [form, setForm] = useState(null);
   const [currencySearch, setCurrencySearch] = useState("");
@@ -18,8 +26,10 @@ export function SettingsPage() {
   async function loadSettings() {
     const response = await fetch("/api/settings");
     const payload = await response.json();
-    setForm(payload);
-    applyTheme(payload.theme || "light");
+    setForm({
+      ...payload,
+      theme: getCurrentTheme(),
+    });
   }
 
   useEffect(() => {
@@ -29,8 +39,10 @@ export function SettingsPage() {
       .then((response) => response.json())
       .then((payload) => {
         if (!cancelled) {
-          setForm(payload);
-          applyTheme(payload.theme || "light");
+          setForm({
+            ...payload,
+            theme: getCurrentTheme(),
+          });
         }
       });
 

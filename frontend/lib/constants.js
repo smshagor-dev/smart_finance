@@ -39,4 +39,5 @@ export const ADMIN_PANEL_ITEMS = [
   { href: "/dashboard/admin/collaboration", label: "Collaboration" },
   { href: "/dashboard/admin/platform", label: "Platform" },
   { href: "/dashboard/admin/site-settings", label: "Site Settings" },
+  { href: "/dashboard/admin/auth-providers", label: "Auth Providers" },
 ];

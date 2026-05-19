@@ -2,10 +2,68 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowRightLeft, Bell, ChartColumn, CircleUserRound, House, Landmark, Menu, ReceiptText, Shield, X } from "lucide-react";
+import {
+  ArrowRightLeft,
+  Banknote,
+  Bell,
+  ChartColumn,
+  CircleDollarSign,
+  CircleUserRound,
+  Coins,
+  CreditCard,
+  FileBarChart2,
+  FolderKanban,
+  HandCoins,
+  House,
+  Landmark,
+  LayoutDashboard,
+  Lightbulb,
+  Menu,
+  ReceiptText,
+  Repeat,
+  Settings,
+  Shield,
+  Target,
+  Tags,
+  Users,
+  Wallet,
+  X,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { ADMIN_PANEL_ITEMS, SIDEBAR_ITEMS } from "@/lib/constants";
+import { resolveAssetUrl } from "@/lib/uploads";
 import { cn } from "@/lib/utils";
+
+const sidebarIconMap = {
+  "/dashboard": LayoutDashboard,
+  "/dashboard/transactions": ReceiptText,
+  "/dashboard/income": Banknote,
+  "/dashboard/expenses": CircleDollarSign,
+  "/dashboard/categories": Tags,
+  "/dashboard/budgets": ChartColumn,
+  "/dashboard/wallets": Wallet,
+  "/dashboard/savings-goals": Target,
+  "/dashboard/recurring": Repeat,
+  "/dashboard/debts": HandCoins,
+  "/dashboard/reports": FileBarChart2,
+  "/dashboard/notifications": Bell,
+  "/dashboard/ai-insights": Lightbulb,
+  "/dashboard/receipts": ReceiptText,
+  "/dashboard/currencies": Coins,
+  "/dashboard/groups": Users,
+  "/dashboard/settings": Settings,
+  "/dashboard/profile": CircleUserRound,
+  "/dashboard/admin": LayoutDashboard,
+  "/dashboard/admin/users": CircleUserRound,
+  "/dashboard/admin/activity": ChartColumn,
+  "/dashboard/admin/integrity": Shield,
+  "/dashboard/admin/access": CreditCard,
+  "/dashboard/admin/finance": Landmark,
+  "/dashboard/admin/collaboration": Users,
+  "/dashboard/admin/platform": House,
+  "/dashboard/admin/site-settings": Settings,
+  "/dashboard/admin/auth-providers": ArrowRightLeft,
+};
 
 export function Sidebar({ user }) {
   const pathname = usePathname();
@@ -13,6 +71,7 @@ export function Sidebar({ user }) {
   const isAdmin = user?.role === "admin";
   const inAdminPanel = pathname.startsWith("/dashboard/admin");
   const items = inAdminPanel ? ADMIN_PANEL_ITEMS : SIDEBAR_ITEMS;
+  const userImageUrl = resolveAssetUrl(user?.image);
   const mobileFooterItems = inAdminPanel
     ? [
         { href: "/dashboard/admin", label: "Home", icon: House },
@@ -36,7 +95,7 @@ export function Sidebar({ user }) {
       {open ? <button className="fixed inset-0 z-20 bg-slate-950/35 lg:hidden" onClick={() => setOpen(false)} aria-label="Close navigation" /> : null}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-30 flex h-screen w-[85vw] max-w-72 flex-col border-r border-border bg-[#112215] px-5 py-6 text-white transition lg:w-72 lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-30 flex h-screen w-[85vw] max-w-72 flex-col border-r border-border bg-[#112215] px-5 py-6 pb-28 text-white transition lg:w-72 lg:translate-x-0 lg:pb-6",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -52,9 +111,9 @@ export function Sidebar({ user }) {
         </div>
         <div className="mb-8 flex items-center gap-3">
           <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-primary">
-            {user?.image ? (
+            {userImageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={user.image} alt={user.name || "Profile image"} className="h-full w-full object-cover" />
+              <img src={userImageUrl} alt={user.name || "Profile image"} className="h-full w-full object-cover" />
             ) : user?.name ? (
               <span className="text-sm font-semibold text-white">
                 {user.name
@@ -74,30 +133,32 @@ export function Sidebar({ user }) {
           </div>
         </div>
 
-        <nav className="flex-1 space-y-2 overflow-y-auto pr-1">
+        <nav className="flex-1 space-y-2 overflow-y-auto pr-1 pb-4">
           {items.map((item) => {
             const active =
               item.href === "/dashboard" || item.href === "/dashboard/admin"
                 ? pathname === item.href
                 : pathname.startsWith(item.href);
+            const Icon = sidebarIconMap[item.href] || House;
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "block rounded-2xl px-4 py-3 text-sm font-medium transition",
+                  "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition",
                   active ? "!bg-white !text-slate-900 shadow-sm" : "text-emerald-50/85 hover:bg-white/10 hover:text-white",
                 )}
                 onClick={() => setOpen(false)}
               >
-                {item.label}
+                <Icon className="h-4 w-4 shrink-0" />
+                <span className="truncate">{item.label}</span>
               </Link>
             );
           })}
         </nav>
 
         {isAdmin ? (
-          <div className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-4">
+          <div className="mt-6 hidden rounded-3xl border border-white/10 bg-white/5 p-4 lg:block">
             <div className="flex items-center gap-3">
               <div className="rounded-2xl bg-white/10 p-2">
                 <Shield className="h-4 w-4" />
@@ -117,6 +178,11 @@ export function Sidebar({ user }) {
             </Link>
           </div>
         ) : null}
+
+        <div className="mt-5 border-t border-white/10 pt-4 text-center lg:hidden">
+          <p className="text-sm font-semibold text-emerald-50">Finance Tracker v1.0.1</p>
+          <p className="mt-2 text-[11px] text-emerald-100/55">© {new Date().getFullYear()} Finance Tracker. All rights reserved.</p>
+        </div>
       </aside>
 
       <div className="fixed inset-x-4 bottom-4 z-30 lg:hidden">
@@ -146,8 +212,8 @@ export function Sidebar({ user }) {
           <button
             type="button"
             className="ml-2 inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-[1.35rem] border border-border bg-white text-slate-700 shadow-sm transition hover:bg-muted"
-            onClick={() => setOpen(true)}
-            aria-label="Open navigation menu"
+            onClick={() => setOpen((current) => !current)}
+            aria-label={open ? "Close navigation menu" : "Open navigation menu"}
           >
             <Menu className="h-5 w-5" />
           </button>

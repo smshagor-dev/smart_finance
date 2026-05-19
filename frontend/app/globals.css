@@ -139,3 +139,48 @@ textarea {
 [data-theme="dark"] textarea::placeholder {
   color: #809486;
 }
+
+[data-theme="dark"] .auth-shell {
+  background: #09110c;
+}
+
+[data-theme="dark"] .auth-shell .auth-form-surface,
+[data-theme="dark"] .auth-shell .bg-\[\#FFFFFF\] {
+  background-color: #101a13 !important;
+}
+
+[data-theme="dark"] .auth-shell .text-\[\#1F2937\] {
+  color: #e7f2ea !important;
+}
+
+[data-theme="dark"] .auth-shell .text-\[\#6B7280\] {
+  color: #9db0a2 !important;
+}
+
+[data-theme="dark"] .auth-shell .border-\[\#0F7A3A\]\/10,
+[data-theme="dark"] .auth-shell .border-\[\#0F7A3A\]\/14,
+[data-theme="dark"] .auth-shell .border-\[\#0F7A3A\]\/15,
+[data-theme="dark"] .auth-shell .border-\[\#0F7A3A\]\/16,
+[data-theme="dark"] .auth-shell .border-\[\#0F7A3A\]\/18 {
+  border-color: rgba(74, 222, 128, 0.18) !important;
+}
+
+[data-theme="dark"] .auth-shell .bg-\[\#BFE7D6\]\/20,
+[data-theme="dark"] .auth-shell .bg-\[\#BFE7D6\]\/28,
+[data-theme="dark"] .auth-shell .bg-\[\#BFE7D6\]\/35,
+[data-theme="dark"] .auth-shell .bg-\[\#BFE7D6\]\/45 {
+  background-color: rgba(21, 33, 26, 0.92) !important;
+}
+
+[data-theme="dark"] .auth-shell .focus\:bg-\[\#FFFFFF\]:focus,
+[data-theme="dark"] .auth-shell .focus-within\:bg-\[\#FFFFFF\]:focus-within {
+  background-color: #132018 !important;
+}
+
+[data-theme="dark"] .auth-shell .disabled\:bg-\[\#BFE7D6\]\/20:disabled {
+  background-color: rgba(21, 33, 26, 0.65) !important;
+}
+
+[data-theme="dark"] .auth-shell .text-\[\#075C2B\] {
+  color: #6ee7b7 !important;
+}

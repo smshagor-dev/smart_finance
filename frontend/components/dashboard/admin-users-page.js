@@ -22,7 +22,7 @@ const defaultForm = {
 export function AdminUsersPage() {
   const [items, setItems] = useState([]);
   const [pagination, setPagination] = useState(null);
-  const [filters, setFilters] = useState({ search: "", role: "", page: 1, pageSize: 10 });
+  const [filters, setFilters] = useState({ search: "", role: "", provider: "", page: 1, pageSize: 10 });
   const [loading, setLoading] = useState(true);
   const [currencies, setCurrencies] = useState([]);
   const [editing, setEditing] = useState(null);
@@ -142,7 +142,7 @@ export function AdminUsersPage() {
   return (
     <div className="space-y-6">
       <Card className="p-5">
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px] xl:grid-cols-[minmax(0,1fr)_220px_180px]">
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_200px_200px] xl:grid-cols-[minmax(0,1fr)_200px_200px_180px]">
           <input
             className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm outline-none"
             placeholder="Search by name or email"
@@ -157,6 +157,17 @@ export function AdminUsersPage() {
             <option value="">All roles</option>
             <option value="admin">Admin</option>
             <option value="user">User</option>
+          </select>
+          <select
+            className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm outline-none"
+            value={filters.provider}
+            onChange={(event) => setFilters((current) => ({ ...current, provider: event.target.value, page: 1 }))}
+          >
+            <option value="">All providers</option>
+            <option value="email">Email</option>
+            <option value="google">Google</option>
+            <option value="facebook">Facebook</option>
+            <option value="telegram">Telegram</option>
           </select>
           <div className="hidden xl:flex items-center justify-end text-sm text-slate-500">
             {pagination ? `${pagination.total} users` : "Users"}
@@ -177,6 +188,7 @@ export function AdminUsersPage() {
                   <th className="px-4 py-3 font-medium text-slate-600">User</th>
                   <th className="px-4 py-3 font-medium text-slate-600">Role</th>
                   <th className="px-4 py-3 font-medium text-slate-600">Currency</th>
+                  <th className="px-4 py-3 font-medium text-slate-600">Providers</th>
                   <th className="px-4 py-3 font-medium text-slate-600">Verified</th>
                   <th className="px-4 py-3 font-medium text-slate-600">Activity</th>
                   <th className="px-4 py-3 font-medium text-slate-600">Joined</th>
@@ -193,6 +205,12 @@ export function AdminUsersPage() {
                       </td>
                       <td className="px-4 py-3 uppercase text-slate-600">{user.role}</td>
                       <td className="px-4 py-3">{user.defaultCurrency?.code || "USD"}</td>
+                      <td className="px-4 py-3 text-xs text-slate-600">
+                        {Object.entries(user.linkedProviders || {})
+                          .filter(([, active]) => active)
+                          .map(([provider]) => provider)
+                          .join(", ") || "None"}
+                      </td>
                       <td className="px-4 py-3">{user.emailVerified ? "Verified" : "Pending"}</td>
                       <td className="px-4 py-3 text-slate-600">
                         {user._count.transactions} transactions • {user._count.groupMemberships} groups
@@ -218,7 +236,7 @@ export function AdminUsersPage() {
                   ))
                 ) : (
                   <tr className="border-t border-border">
-                    <td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-500">
+                    <td colSpan={8} className="px-4 py-10 text-center text-sm text-slate-500">
                       No users found
                     </td>
                   </tr>

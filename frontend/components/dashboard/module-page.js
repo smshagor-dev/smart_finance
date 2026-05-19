@@ -38,6 +38,7 @@ import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast-provider";
 import { useLiveUpdateListener } from "@/lib/live-client";
+import { resolveAssetUrl } from "@/lib/uploads";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 
 const fieldTypeToInput = {
@@ -199,6 +200,14 @@ function renderCell(item, column) {
   }
   if (column.format === "date") return formatDate(value);
   if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (typeof value === "string" && (value.startsWith("/uploads/") || /^https?:\/\//i.test(value))) {
+    const href = resolveAssetUrl(value);
+    return (
+      <a href={href} target="_blank" rel="noreferrer" className="font-medium text-primary underline-offset-4 hover:underline">
+        Open file
+      </a>
+    );
+  }
   return value || "-";
 }
 
@@ -246,6 +255,50 @@ function isCurrencySelect(field) {
   return field.lookupKey === "currencies" || field.name.toLowerCase().includes("currency");
 }
 
+function applyCreateDefaults(defaultValues, fields, lookupData) {
+  const nextForm = { ...defaultValues };
+  const defaultCurrencyId = lookupData?.defaultCurrencyId || "";
+
+  fields.forEach((field) => {
+    if (field.type === "date" && nextForm[field.name] === undefined) {
+      nextForm[field.name] = "";
+    }
+
+    if (defaultCurrencyId && isCurrencySelect(field) && !nextForm[field.name]) {
+      nextForm[field.name] = defaultCurrencyId;
+    }
+  });
+
+  return nextForm;
+}
+
+async function readResponsePayload(response) {
+  const contentType = response.headers.get("content-type") || "";
+  const rawText = await response.text();
+
+  if (!rawText) {
+    return {};
+  }
+
+  if (contentType.includes("application/json")) {
+    return JSON.parse(rawText);
+  }
+
+  try {
+    return JSON.parse(rawText);
+  } catch {
+    return { error: rawText };
+  }
+}
+
+function getResponseError(data, fallback) {
+  if (data && typeof data.error === "string" && data.error.trim()) {
+    return data.error;
+  }
+
+  return fallback;
+}
+
 export function ModulePage({
   title,
   description,
@@ -276,6 +329,7 @@ export function ModulePage({
   const [form, setForm] = useState(defaultValues);
   const [lookupData, setLookupData] = useState({});
   const [uploadingField, setUploadingField] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const hasLoadedRef = useRef(false);
   const toast = useToast();
   const baseFiltersKey = JSON.stringify(baseFilters || {});
@@ -289,28 +343,37 @@ export function ModulePage({
       return;
     }
 
-    const results = await Promise.all(
-      extraSummaryCards.map(async (card) => {
-        const params = new URLSearchParams(
-          Object.entries({ ...stableBaseFilters, ...(card.filters || {}), page: 1, pageSize: 1, sort: "newest" })
-            .filter(([, value]) => value !== undefined && value !== null && value !== "")
-            .map(([key, value]) => [key, String(value)]),
-        );
+    try {
+      const results = await Promise.all(
+        extraSummaryCards.map(async (card) => {
+          const params = new URLSearchParams(
+            Object.entries({ ...stableBaseFilters, ...(card.filters || {}), page: 1, pageSize: 1, sort: "newest" })
+              .filter(([, value]) => value !== undefined && value !== null && value !== "")
+              .map(([key, value]) => [key, String(value)]),
+          );
 
-        const response = await fetch(`${endpoint}?${params.toString()}`, {
-          cache: "no-store",
-        });
-        const data = await response.json();
+          const response = await fetch(`${endpoint}?${params.toString()}`, {
+            cache: "no-store",
+          });
+          const data = await readResponsePayload(response);
 
-        return {
-          ...card,
-          summary: data.summary || null,
-          total: data.pagination?.total || 0,
-        };
-      }),
-    );
+          if (!response.ok) {
+            throw new Error(getResponseError(data, "Failed to load summary"));
+          }
 
-    setExtraSummaries(results);
+          return {
+            ...card,
+            summary: data.summary || null,
+            total: data.pagination?.total || 0,
+          };
+        }),
+      );
+
+      setExtraSummaries(results);
+    } catch (error) {
+      console.error(error);
+      setExtraSummaries([]);
+    }
   }
 
   async function fetchData({ silent = false } = {}) {
@@ -323,25 +386,45 @@ export function ModulePage({
         .filter(([, value]) => value)
         .map(([key, value]) => [key, String(value)]),
     );
-    const response = await fetch(`${endpoint}?${params.toString()}`, {
-      cache: "no-store",
-    });
-    const data = await response.json();
-    setItems(data.items || []);
-    setPagination(data.pagination || null);
-    setSummary(data.summary || null);
-    setLoading(false);
-    setHasLoaded(true);
-    hasLoadedRef.current = true;
+    try {
+      const response = await fetch(`${endpoint}?${params.toString()}`, {
+        cache: "no-store",
+      });
+      const data = await readResponsePayload(response);
+
+      if (!response.ok) {
+        throw new Error(getResponseError(data, "Failed to load data"));
+      }
+
+      setItems(data.items || []);
+      setPagination(data.pagination || null);
+      setSummary(data.summary || null);
+      setHasLoaded(true);
+      hasLoadedRef.current = true;
+    } catch (error) {
+      console.error(error);
+      toast.push(error.message || "Failed to load data", "error");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function fetchLookups() {
     if (!stableLookups.length) return;
-    const response = await fetch("/api/dashboard/overview?mode=lookups", {
-      cache: "no-store",
-    });
-    const data = await response.json();
-    setLookupData(data.lookups || {});
+    try {
+      const response = await fetch("/api/dashboard/overview?mode=lookups", {
+        cache: "no-store",
+      });
+      const data = await readResponsePayload(response);
+
+      if (!response.ok) {
+        throw new Error(getResponseError(data, "Failed to load lookups"));
+      }
+
+      setLookupData(data.lookups || {});
+    } catch (error) {
+      console.error(error);
+    }
   }
 
   async function fetchOverallSummary() {
@@ -355,67 +438,104 @@ export function ModulePage({
         .map(([key, value]) => [key, String(value)]),
     );
 
-    const response = await fetch(`${endpoint}?${params.toString()}`, {
-      cache: "no-store",
-    });
-    const data = await response.json();
-    setOverallSummary(data.summary || null);
-    setOverallCount(data.pagination?.total || 0);
+    try {
+      const response = await fetch(`${endpoint}?${params.toString()}`, {
+        cache: "no-store",
+      });
+      const data = await readResponsePayload(response);
+
+      if (!response.ok) {
+        throw new Error(getResponseError(data, "Failed to load overall summary"));
+      }
+
+      setOverallSummary(data.summary || null);
+      setOverallCount(data.pagination?.total || 0);
+    } catch (error) {
+      console.error(error);
+      setOverallSummary(null);
+      setOverallCount(0);
+    }
   }
 
   useEffect(() => {
     let active = true;
 
     async function load() {
-      if (!hasLoadedRef.current) {
-        setLoading(true);
-      }
+      try {
+        if (!hasLoadedRef.current) {
+          setLoading(true);
+        }
 
-      const params = new URLSearchParams(
-        Object.entries({ ...stableBaseFilters, ...filters })
-          .filter(([, value]) => value)
-          .map(([key, value]) => [key, String(value)]),
-      );
-      const response = await fetch(`${endpoint}?${params.toString()}`, {
-        cache: "no-store",
-      });
-      const data = await response.json();
-      if (!active) return;
-      setItems(data.items || []);
-      setPagination(data.pagination || null);
-      setSummary(data.summary || null);
-      setLoading(false);
-      setHasLoaded(true);
-      hasLoadedRef.current = true;
+        const params = new URLSearchParams(
+          Object.entries({ ...stableBaseFilters, ...filters })
+            .filter(([, value]) => value)
+            .map(([key, value]) => [key, String(value)]),
+        );
+        const response = await fetch(`${endpoint}?${params.toString()}`, {
+          cache: "no-store",
+        });
+        const data = await readResponsePayload(response);
+
+        if (!response.ok) {
+          throw new Error(getResponseError(data, "Failed to load data"));
+        }
+
+        if (!active) return;
+        setItems(data.items || []);
+        setPagination(data.pagination || null);
+        setSummary(data.summary || null);
+        setHasLoaded(true);
+        hasLoadedRef.current = true;
+      } catch (error) {
+        console.error(error);
+        if (!active) return;
+        toast.push(error.message || "Failed to load data", "error");
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
     }
 
     load();
     return () => {
       active = false;
     };
-  }, [endpoint, filters, stableBaseFilters]);
+  }, [endpoint, filters, stableBaseFilters, toast]);
 
   useEffect(() => {
     let active = true;
 
     async function loadOverallSummary() {
-      if (!showOverallTotal) {
-        return;
+      try {
+        if (!showOverallTotal) {
+          return;
+        }
+
+        const params = new URLSearchParams(
+          Object.entries({ ...stableBaseFilters, page: 1, pageSize: 1, sort: "newest" })
+            .filter(([, value]) => value !== undefined && value !== null && value !== "")
+            .map(([key, value]) => [key, String(value)]),
+        );
+
+        const response = await fetch(`${endpoint}?${params.toString()}`, {
+          cache: "no-store",
+        });
+        const data = await readResponsePayload(response);
+
+        if (!response.ok) {
+          throw new Error(getResponseError(data, "Failed to load overall summary"));
+        }
+
+        if (!active) return;
+        setOverallSummary(data.summary || null);
+        setOverallCount(data.pagination?.total || 0);
+      } catch (error) {
+        console.error(error);
+        if (!active) return;
+        setOverallSummary(null);
+        setOverallCount(0);
       }
-
-      const params = new URLSearchParams(
-        Object.entries({ ...stableBaseFilters, page: 1, pageSize: 1, sort: "newest" })
-          .filter(([, value]) => value !== undefined && value !== null && value !== "")
-          .map(([key, value]) => [key, String(value)]),
-      );
-
-      const response = await fetch(`${endpoint}?${params.toString()}`, {
-        cache: "no-store",
-      });
-      const data = await response.json();
-      if (!active) return;
-      setOverallSummary(data.summary || null);
-      setOverallCount(data.pagination?.total || 0);
     }
 
     loadOverallSummary();
@@ -428,33 +548,43 @@ export function ModulePage({
     let active = true;
 
     async function loadExtraSummaries() {
-      if (!extraSummaryCards.length) {
-        return;
+      try {
+        if (!extraSummaryCards.length) {
+          return;
+        }
+
+        const results = await Promise.all(
+          extraSummaryCards.map(async (card) => {
+            const params = new URLSearchParams(
+              Object.entries({ ...stableBaseFilters, ...(card.filters || {}), page: 1, pageSize: 1, sort: "newest" })
+                .filter(([, value]) => value !== undefined && value !== null && value !== "")
+                .map(([key, value]) => [key, String(value)]),
+            );
+
+            const response = await fetch(`${endpoint}?${params.toString()}`, {
+              cache: "no-store",
+            });
+            const data = await readResponsePayload(response);
+
+            if (!response.ok) {
+              throw new Error(getResponseError(data, "Failed to load summary"));
+            }
+
+            return {
+              ...card,
+              summary: data.summary || null,
+              total: data.pagination?.total || 0,
+            };
+          }),
+        );
+
+        if (!active) return;
+        setExtraSummaries(results);
+      } catch (error) {
+        console.error(error);
+        if (!active) return;
+        setExtraSummaries([]);
       }
-
-      const results = await Promise.all(
-        extraSummaryCards.map(async (card) => {
-          const params = new URLSearchParams(
-            Object.entries({ ...stableBaseFilters, ...(card.filters || {}), page: 1, pageSize: 1, sort: "newest" })
-              .filter(([, value]) => value !== undefined && value !== null && value !== "")
-              .map(([key, value]) => [key, String(value)]),
-          );
-
-          const response = await fetch(`${endpoint}?${params.toString()}`, {
-            cache: "no-store",
-          });
-          const data = await response.json();
-
-          return {
-            ...card,
-            summary: data.summary || null,
-            total: data.pagination?.total || 0,
-          };
-        }),
-      );
-
-      if (!active) return;
-      setExtraSummaries(results);
     }
 
     loadExtraSummaries();
@@ -467,13 +597,22 @@ export function ModulePage({
     let active = true;
 
     async function load() {
-      if (!stableLookups.length) return;
-      const response = await fetch("/api/dashboard/overview?mode=lookups", {
-        cache: "no-store",
-      });
-      const data = await response.json();
-      if (!active) return;
-      setLookupData(data.lookups || {});
+      try {
+        if (!stableLookups.length) return;
+        const response = await fetch("/api/dashboard/overview?mode=lookups", {
+          cache: "no-store",
+        });
+        const data = await readResponsePayload(response);
+
+        if (!response.ok) {
+          throw new Error(getResponseError(data, "Failed to load lookups"));
+        }
+
+        if (!active) return;
+        setLookupData(data.lookups || {});
+      } catch (error) {
+        console.error(error);
+      }
     }
 
     load();
@@ -491,7 +630,7 @@ export function ModulePage({
 
   function openCreate() {
     setEditing(null);
-    setForm(defaultValues);
+    setForm(applyCreateDefaults(defaultValues, fields, lookupData));
     setOpen(true);
   }
 
@@ -520,10 +659,10 @@ export function ModulePage({
         method: "POST",
         body: formData,
       });
-      const data = await response.json();
+      const data = await readResponsePayload(response);
 
       if (!response.ok) {
-        toast.push(data.error || "Upload failed", "error");
+        toast.push(getResponseError(data, "Upload failed"), "error");
         return;
       }
 
@@ -538,24 +677,33 @@ export function ModulePage({
 
   async function handleSubmit(event) {
     event.preventDefault();
-    const response = await fetch(editing ? `${endpoint}/${editing.id}` : endpoint, {
-      method: editing ? "PUT" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...stableBaseFilters, ...form }),
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      toast.push(data.error || "Save failed", "error");
-      return;
+    setSubmitting(true);
+    try {
+      const response = await fetch(editing ? `${endpoint}/${editing.id}` : endpoint, {
+        method: editing ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...stableBaseFilters, ...form }),
+      });
+      const data = await readResponsePayload(response);
+
+      if (!response.ok) {
+        toast.push(getResponseError(data, "Save failed"), "error");
+        return;
+      }
+
+      toast.push(editing ? "Record updated" : "Record created");
+      setOpen(false);
+      if (editing) {
+        fetchData({ silent: true });
+        return;
+      }
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      toast.push("Save failed", "error");
+    } finally {
+      setSubmitting(false);
     }
-    toast.push(editing ? "Record updated" : "Record created");
-    setOpen(false);
-    if (editing) {
-      fetchData({ silent: true });
-      return;
-    }
-    router.push("/dashboard");
-    router.refresh();
   }
 
   async function handleDelete(id) {
@@ -968,13 +1116,13 @@ export function ModulePage({
                           }
                           event.target.value = "";
                         }}
-                        disabled={uploadingField === field.name}
+                        disabled={uploadingField === field.name || submitting}
                       />
                     </label>
                     {form[field.name] ? (
                       <>
                         <a
-                          href={form[field.name]}
+                          href={resolveAssetUrl(form[field.name])}
                           target="_blank"
                           rel="noreferrer"
                           className="inline-flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm font-medium transition hover:bg-muted dark:text-slate-100"
@@ -999,6 +1147,7 @@ export function ModulePage({
                     value={form[field.name] ?? ""}
                     onChange={(event) => setForm((current) => ({ ...current, [field.name]: event.target.value }))}
                     placeholder={field.placeholder || "Uploaded file URL will appear here"}
+                    disabled={submitting}
                   />
                 </div>
               ) : field.type === "select" ? (
@@ -1015,6 +1164,7 @@ export function ModulePage({
                     className="w-full rounded-2xl border border-border bg-card px-4 py-3 text-slate-950 outline-none dark:text-slate-100"
                     value={form[field.name] ?? ""}
                     onChange={(event) => setForm((current) => ({ ...current, [field.name]: event.target.value }))}
+                    disabled={submitting}
                   >
                     <option value="">Select</option>
                     {(field.options || lookupData[field.lookupKey] || []).map((option) => (
@@ -1029,6 +1179,7 @@ export function ModulePage({
                   className="min-h-28 w-full rounded-2xl border border-border bg-card px-4 py-3 text-slate-950 outline-none placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500"
                   value={form[field.name] ?? ""}
                   onChange={(event) => setForm((current) => ({ ...current, [field.name]: event.target.value }))}
+                  disabled={submitting}
                 />
               ) : (
                 <input
@@ -1040,15 +1191,18 @@ export function ModulePage({
                     const value = field.type === "checkbox" ? event.target.checked : event.target.value;
                     setForm((current) => ({ ...current, [field.name]: value }));
                   }}
+                  disabled={submitting}
                 />
               )}
             </label>
           ))}
           <div className="flex flex-col gap-3 md:col-span-2 md:flex-row md:justify-end">
-            <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
+            <Button type="button" variant="secondary" onClick={() => setOpen(false)} disabled={submitting}>
               Cancel
             </Button>
-            <Button type="submit">{editing ? "Update" : "Create"}</Button>
+            <Button type="submit" disabled={submitting || Boolean(uploadingField)}>
+              {submitting ? (editing ? "Updating..." : "Creating...") : editing ? "Update" : "Create"}
+            </Button>
           </div>
         </form>
       </Modal>

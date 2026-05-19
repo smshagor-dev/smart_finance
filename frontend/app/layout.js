@@ -1,11 +1,11 @@
 import { cookies } from "next/headers";
-import Script from "next/script";
 import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 import { FrontendNoCache } from "@/components/frontend-no-cache";
 import { PwaRegistration } from "@/components/pwa-registration";
 import { getPublicSiteSettings } from "@/lib/site-settings";
 import { getMetadataBaseUrl } from "@/lib/app-url";
+import { resolveAssetUrl } from "@/lib/uploads";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -25,11 +25,13 @@ export async function generateMetadata() {
       seoKeywords: "",
       siteUrl: null,
       iconUrl: null,
+      logoUrl: null,
     };
   }
 
   const title = siteSettings.seoTitle || siteSettings.siteName;
   const description = siteSettings.seoDescription || siteSettings.siteDescription;
+  const iconUrl = resolveAssetUrl(siteSettings.logoUrl || siteSettings.iconUrl);
   const keywords = (siteSettings.seoKeywords || "")
     .split(",")
     .map((item) => item.trim())
@@ -44,11 +46,11 @@ export async function generateMetadata() {
     keywords,
     metadataBase: getMetadataBaseUrl(siteSettings.siteUrl),
     manifest: "/manifest.webmanifest",
-    icons: siteSettings.iconUrl
+    icons: iconUrl
       ? {
-          icon: siteSettings.iconUrl,
-          shortcut: siteSettings.iconUrl,
-          apple: siteSettings.iconUrl,
+          icon: iconUrl,
+          shortcut: iconUrl,
+          apple: iconUrl,
         }
       : undefined,
   };
@@ -58,6 +60,11 @@ function themeInitializationScript(initialTheme) {
   return `
     (function() {
       try {
+        var nodes = document.querySelectorAll('[bis_skin_checked]');
+        for (var i = 0; i < nodes.length; i += 1) {
+          nodes[i].removeAttribute('bis_skin_checked');
+        }
+
         var stored = window.localStorage.getItem('finance_tracker_theme');
         var fallback = '${initialTheme}';
         var theme = stored === 'dark' || stored === 'light' ? stored : fallback;
@@ -79,18 +86,14 @@ export default async function RootLayout({ children }) {
   try {
     siteSettings = await getPublicSiteSettings();
   } catch {
-    siteSettings = { iconUrl: null };
+    siteSettings = { iconUrl: null, logoUrl: null };
   }
 
   return (
     <html lang="en" className="h-full antialiased" data-theme={theme} suppressHydrationWarning>
       <head>
-        <Script
-          id="theme-init"
-          strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{ __html: themeInitializationScript(theme) }}
-        />
-        {siteSettings.iconUrl ? <link rel="icon" href={siteSettings.iconUrl} /> : null}
+        <script id="theme-init" dangerouslySetInnerHTML={{ __html: themeInitializationScript(theme) }} />
+        {siteSettings.logoUrl || siteSettings.iconUrl ? <link rel="icon" href={resolveAssetUrl(siteSettings.logoUrl || siteSettings.iconUrl)} /> : null}
       </head>
       <body className="min-h-full">
         <FrontendNoCache />

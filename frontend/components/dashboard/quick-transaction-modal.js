@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useToast } from "@/components/ui/toast-provider";
+import { resolveAssetUrl } from "@/lib/uploads";
 
 function createInitialForm() {
   return {
@@ -15,7 +16,7 @@ function createInitialForm() {
     walletId: "",
     groupId: "",
     currencyId: "",
-    transactionDate: new Date().toISOString().slice(0, 10),
+    transactionDate: "",
     incomeSource: "",
     paymentMethod: "",
     attachmentUrl: "",
@@ -68,7 +69,11 @@ export function QuickTransactionModal() {
     function handleQuickCreate(event) {
       const nextType = event.detail?.type === "expense" ? "expense" : "income";
       setType(nextType);
-      setForm({ ...createInitialForm(), type: nextType });
+      setForm((current) => ({
+        ...createInitialForm(),
+        type: nextType,
+        currencyId: lookups.defaultCurrencyId || current.currencyId || "",
+      }));
       setOpen(true);
     }
 
@@ -76,7 +81,7 @@ export function QuickTransactionModal() {
     return () => {
       window.removeEventListener("dashboard-quick-create", handleQuickCreate);
     };
-  }, []);
+  }, [lookups.defaultCurrencyId]);
 
   const walletOptions = lookups.wallets || [];
   const incomeCategoryOptions = lookups.incomeCategories || [];
@@ -89,6 +94,7 @@ export function QuickTransactionModal() {
   const hasExpenseCategories = expenseCategoryOptions.length > 0;
   const hasTypeCategories = type === "income" ? hasIncomeCategories : hasExpenseCategories;
   const canSubmit = hasWallets && hasTypeCategories;
+  const defaultCurrencyId = lookups.defaultCurrencyId || "";
 
   const setupMessage = useMemo(() => {
     if (!hasWallets && !hasTypeCategories) {
@@ -365,7 +371,7 @@ export function QuickTransactionModal() {
                   </label>
                   {form.attachmentUrl ? (
                     <>
-                      <a href={form.attachmentUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-2xl border border-border bg-white px-4 py-3 text-sm font-medium transition hover:bg-muted">
+                      <a href={resolveAssetUrl(form.attachmentUrl)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-2xl border border-border bg-white px-4 py-3 text-sm font-medium transition hover:bg-muted">
                         <ExternalLink className="h-4 w-4" />
                         Open file
                       </a>

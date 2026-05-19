@@ -15,6 +15,7 @@ const typeOptions = [
   { value: "message", label: "Messages" },
   { value: "receipt", label: "Receipts" },
   { value: "notification", label: "Notifications" },
+  { value: "auth", label: "Auth" },
 ];
 
 export function AdminActivityPage() {

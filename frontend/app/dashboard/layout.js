@@ -1,3 +1,4 @@
+import { AuthOnboardingGate } from "@/components/dashboard/auth-onboarding-gate";
 import { LiveUpdatesProvider } from "@/components/dashboard/live-updates-provider";
 import { NotificationRealtimeListener } from "@/components/dashboard/notification-realtime-listener";
 import { NotificationsDrawer } from "@/components/dashboard/notifications-drawer";
@@ -18,6 +19,7 @@ export default async function DashboardLayout({ children }) {
       <div className="min-h-screen overflow-x-clip">
         <LiveUpdatesProvider />
         <NotificationRealtimeListener />
+        <AuthOnboardingGate user={user} />
         <Sidebar user={user} />
         <main className="lg:pl-72">
           <div className="mx-auto max-w-7xl px-4 pb-28 pt-4 min-[375px]:px-5 min-[390px]:pt-4 min-[430px]:px-6 sm:pb-8 sm:pt-5 lg:p-8">

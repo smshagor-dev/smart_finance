@@ -1,4 +1,5 @@
 import { getPublicSiteSettings } from "@/lib/site-settings";
+import { resolveAssetUrl } from "@/lib/uploads";
 
 function getIconType(src) {
   if (src.endsWith(".svg")) return "image/svg+xml";
@@ -17,10 +18,11 @@ export default async function manifest() {
       siteName: "Finance Tracker",
       siteDescription: "Personal finance tracker",
       iconUrl: null,
+      logoUrl: null,
     };
   }
 
-  const iconSrc = siteSettings.iconUrl || "/next.svg";
+  const iconSrc = resolveAssetUrl(siteSettings.logoUrl || siteSettings.iconUrl) || "/next.svg";
   const iconType = getIconType(iconSrc);
 
   return {

@@ -16,6 +16,7 @@ const iconMap = {
   "/dashboard/admin/collaboration": MessagesSquare,
   "/dashboard/admin/platform": Layers3,
   "/dashboard/admin/site-settings": Settings2,
+  "/dashboard/admin/auth-providers": Settings2,
 };
 
 const descriptionMap = {
@@ -28,6 +29,7 @@ const descriptionMap = {
   "/dashboard/admin/collaboration": "Groups, receipts, and alerts",
   "/dashboard/admin/platform": "Read-only config snapshot",
   "/dashboard/admin/site-settings": "SEO, branding, SMTP, verification",
+  "/dashboard/admin/auth-providers": "Google, Facebook, Telegram auth",
 };
 
 export function AdminNav() {

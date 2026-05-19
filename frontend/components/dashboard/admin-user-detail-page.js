@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { resolveAssetUrl } from "@/lib/uploads";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 const countCards = [
@@ -49,6 +50,13 @@ export function AdminUserDetailPage({ userId }) {
             Back to users
           </Button>
         </Link>
+        <div className="rounded-full bg-muted px-4 py-2 text-sm text-slate-600">
+          Providers:{" "}
+          {Object.entries(data.linkedProviders || {})
+            .filter(([, active]) => active)
+            .map(([provider]) => provider)
+            .join(", ") || "none"}
+        </div>
         <div className="rounded-full bg-muted px-4 py-2 text-sm text-slate-600">
           {data.role} • {data.emailVerified ? "verified" : "pending verification"}
         </div>
@@ -155,7 +163,7 @@ export function AdminUserDetailPage({ userId }) {
               data.receipts.map((receipt) => (
                 <a
                   key={receipt.id}
-                  href={receipt.fileUrl}
+                  href={resolveAssetUrl(receipt.fileUrl)}
                   target="_blank"
                   rel="noreferrer"
                   className="block rounded-2xl bg-muted p-4 transition hover:bg-slate-100"

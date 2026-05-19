@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { useToast } from "@/components/ui/toast-provider";
+import { resolveAssetUrl } from "@/lib/uploads";
 
 const emptyForm = {
   siteName: "",
@@ -179,7 +180,7 @@ export function AdminSiteSettingsPage() {
               <div className="flex min-h-32 items-center justify-center rounded-3xl bg-muted p-4">
                 {asset.value ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={asset.value} alt={asset.label} className="max-h-24 w-auto object-contain" />
+                  <img src={resolveAssetUrl(asset.value)} alt={asset.label} className="max-h-24 w-auto object-contain" />
                 ) : (
                   <p className="text-sm text-slate-500">No file uploaded</p>
                 )}

@@ -73,25 +73,25 @@ export function PwaInstallBanner() {
   }
 
   return (
-    <Card className="mb-6 overflow-hidden border-cyan-200 bg-gradient-to-r from-cyan-50 via-white to-sky-50 p-5">
+    <Card className="mb-6 overflow-hidden border-cyan-200 bg-gradient-to-r from-cyan-50 via-white to-sky-50 p-5 dark:border-cyan-900/60 dark:from-slate-950 dark:via-slate-900 dark:to-cyan-950/70">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-start gap-4">
-          <div className="rounded-3xl bg-cyan-600 p-3 text-white">
+          <div className="rounded-3xl bg-cyan-600 p-3 text-white shadow-sm dark:bg-cyan-500">
             <Smartphone className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-slate-900">Install this app</h3>
-            <p className="mt-1 text-sm text-slate-600">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Install this app</h3>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
               Add Finance Tracker to the home screen for faster access and a native app-style experience.
             </p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Button className="gap-2" onClick={handleInstall} disabled={installing}>
+          <Button className="gap-2 shadow-sm" onClick={handleInstall} disabled={installing}>
             <Download className="h-4 w-4" />
             {installing ? "Preparing..." : "Install App"}
           </Button>
-          <Button variant="ghost" className="gap-2" onClick={handleDismiss}>
+          <Button variant="ghost" className="gap-2 dark:text-slate-200 dark:hover:bg-white/10" onClick={handleDismiss}>
             <X className="h-4 w-4" />
             Dismiss
           </Button>

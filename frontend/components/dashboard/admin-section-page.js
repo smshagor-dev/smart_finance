@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Database, FolderTree, Layers3, ShieldCheck } from "lucide-react";
+import { Database, FolderTree, Layers3, Search, ShieldCheck, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { Button } from "@/components/ui/button";
 
 const iconMap = {
   integrity: Layers3,
@@ -15,11 +16,21 @@ const iconMap = {
 
 export function AdminSectionPage({ section }) {
   const [data, setData] = useState(null);
+  const [blockState, setBlockState] = useState({});
 
   useEffect(() => {
     let active = true;
+    const params = new URLSearchParams();
+    Object.entries(blockState).forEach(([key, value]) => {
+      if (value?.page) {
+        params.set(`${key}Page`, String(value.page));
+      }
+      if (value?.search) {
+        params.set(`${key}Search`, value.search);
+      }
+    });
 
-    fetch(`/api/admin/sections/${section}`)
+    fetch(`/api/admin/sections/${section}${params.toString() ? `?${params.toString()}` : ""}`)
       .then((response) => response.json())
       .then((payload) => {
         if (active) {
@@ -30,7 +41,7 @@ export function AdminSectionPage({ section }) {
     return () => {
       active = false;
     };
-  }, [section]);
+  }, [blockState, section]);
 
   if (!data) {
     return <LoadingSkeleton rows={12} />;
@@ -72,10 +83,52 @@ export function AdminSectionPage({ section }) {
             <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
               <div>
                 <h4 className="font-semibold">{block.title}</h4>
-                <p className="text-xs text-slate-500">Latest records from this table</p>
+                <p className="text-xs text-slate-500">
+                  {block.pagination?.pageSize ? `${block.pagination.pageSize} per page with search filter` : "Latest records from this table"}
+                </p>
               </div>
               <span className="rounded-full bg-muted px-3 py-1 text-xs font-semibold text-slate-600">{block.count}</span>
             </div>
+
+            {section === "finance" ? (
+              <div className="border-b border-border px-5 py-4">
+                <label className="relative block">
+                  <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    className="w-full rounded-2xl border border-border bg-card py-3 pl-11 pr-11 text-sm outline-none transition placeholder:text-slate-500 focus:border-primary"
+                    placeholder={`Search ${block.title.toLowerCase()}`}
+                    value={blockState[block.key]?.search ?? block.search ?? ""}
+                    onChange={(event) =>
+                      setBlockState((current) => ({
+                        ...current,
+                        [block.key]: {
+                          page: 1,
+                          search: event.target.value,
+                        },
+                      }))
+                    }
+                  />
+                  {blockState[block.key]?.search || block.search ? (
+                    <button
+                      type="button"
+                      className="absolute right-3 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition hover:bg-muted hover:text-slate-700"
+                      onClick={() =>
+                        setBlockState((current) => ({
+                          ...current,
+                          [block.key]: {
+                            page: 1,
+                            search: "",
+                          },
+                        }))
+                      }
+                      aria-label={`Clear ${block.title} search`}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  ) : null}
+                </label>
+              </div>
+            ) : null}
 
             {block.rows?.length ? (
               <div className="overflow-x-auto">
@@ -105,6 +158,50 @@ export function AdminSectionPage({ section }) {
             ) : (
               <div className="px-5 py-8 text-center text-sm text-slate-500">{block.emptyMessage}</div>
             )}
+
+            {section === "finance" && block.pagination ? (
+              <div className="flex flex-col gap-3 border-t border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs text-slate-500">
+                  Page {block.pagination.page} of {block.pagination.totalPages || 1}
+                </p>
+                <div className="grid grid-cols-2 gap-2 sm:flex">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="w-full sm:w-auto"
+                    disabled={block.pagination.page <= 1}
+                    onClick={() =>
+                      setBlockState((current) => ({
+                        ...current,
+                        [block.key]: {
+                          page: Math.max(1, (current[block.key]?.page || block.pagination.page) - 1),
+                          search: current[block.key]?.search ?? block.search ?? "",
+                        },
+                      }))
+                    }
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="w-full sm:w-auto"
+                    disabled={block.pagination.page >= block.pagination.totalPages}
+                    onClick={() =>
+                      setBlockState((current) => ({
+                        ...current,
+                        [block.key]: {
+                          page: Math.min(block.pagination.totalPages, (current[block.key]?.page || block.pagination.page) + 1),
+                          search: current[block.key]?.search ?? block.search ?? "",
+                        },
+                      }))
+                    }
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            ) : null}
           </Card>
         ))}
       </div>

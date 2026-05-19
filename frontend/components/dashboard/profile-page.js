@@ -7,6 +7,7 @@ import { Eye, EyeOff, Upload, UserRound, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useLiveUpdateListener } from "@/lib/live-client";
+import { resolveAssetUrl } from "@/lib/uploads";
 import { formatDate } from "@/lib/utils";
 
 export function ProfilePage() {
@@ -16,6 +17,8 @@ export function ProfilePage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isRemovingImage, setIsRemovingImage] = useState(false);
 
   function applyProfile(data) {
     setProfile(data);
@@ -59,14 +62,18 @@ export function ProfilePage() {
     return <div className="animate-pulse rounded-3xl bg-muted p-16" />;
   }
 
+  const profileImageUrl = resolveAssetUrl(form.image);
+
   async function handleSave(event) {
     event.preventDefault();
+    setIsSaving(true);
     const response = await fetch("/api/profile", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     });
     const data = await response.json();
+    setIsSaving(false);
 
     if (!response.ok) {
       toast.error(data.error || "Could not update profile");
@@ -108,6 +115,29 @@ export function ProfilePage() {
     } finally {
       setIsUploadingImage(false);
       event.target.value = "";
+    }
+  }
+
+  async function handleImageRemove() {
+    setIsRemovingImage(true);
+    try {
+      const response = await fetch("/api/profile/avatar", {
+        method: "DELETE",
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        toast.error(data.error || "Could not remove image");
+        return;
+      }
+
+      setForm((current) => ({ ...current, image: "" }));
+      setProfile((current) => (current ? { ...current, image: "" } : current));
+      toast.success("Profile image removed");
+    } catch {
+      toast.error("Could not remove image");
+    } finally {
+      setIsRemovingImage(false);
     }
   }
 
@@ -176,31 +206,29 @@ export function ProfilePage() {
             <span className="mb-3 block text-sm font-medium">Profile image</span>
             <div className="flex flex-col gap-4 rounded-3xl border border-border bg-slate-50/80 p-4 sm:flex-row sm:items-center">
               <div className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-3xl bg-white ring-1 ring-border">
-                {form.image ? (
-                  <Image src={form.image} alt={form.name || "Profile image"} fill className="object-cover" />
+                {profileImageUrl ? (
+                  <Image src={profileImageUrl} alt={form.name || "Profile image"} fill className="object-cover" unoptimized />
                 ) : (
                   <UserRound className="h-10 w-10 text-slate-400" />
                 )}
               </div>
               <div className="flex-1 space-y-2">
-                <p className="text-sm text-slate-600">Upload a square JPG, PNG, WEBP, or GIF image up to 5MB. The uploaded image will be saved when you save the profile.</p>
+                <p className="text-sm text-slate-600">Upload a square JPG, PNG, WEBP, or GIF image up to 5MB. The uploaded image is applied to your profile immediately.</p>
                 <div className="flex flex-wrap gap-3">
                   <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800">
                     <Upload className="h-4 w-4" />
                     {isUploadingImage ? "Uploading..." : "Upload image"}
-                    <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={handleImageUpload} disabled={isUploadingImage} />
+                    <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={handleImageUpload} disabled={isUploadingImage || isSaving || isRemovingImage} />
                   </label>
                   {form.image ? (
                     <Button
                       type="button"
                       variant="secondary"
-                      onClick={() => {
-                        setForm((current) => ({ ...current, image: "" }));
-                        setProfile((current) => (current ? { ...current, image: "" } : current));
-                      }}
+                      onClick={handleImageRemove}
+                      disabled={isUploadingImage || isSaving || isRemovingImage}
                     >
                       <X className="mr-2 h-4 w-4" />
-                      Remove image
+                      {isRemovingImage ? "Removing..." : "Remove image"}
                     </Button>
                   ) : null}
                 </div>
@@ -215,6 +243,7 @@ export function ProfilePage() {
               value={form.name}
               onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
               required
+              disabled={isSaving}
             />
           </label>
 
@@ -226,6 +255,7 @@ export function ProfilePage() {
               value={form.email}
               onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
               required
+              disabled={isSaving}
             />
           </label>
 
@@ -238,6 +268,7 @@ export function ProfilePage() {
                 value={form.currentPassword}
                 onChange={(event) => setForm((current) => ({ ...current, currentPassword: event.target.value }))}
                 placeholder="Required for email or password change"
+                disabled={isSaving}
               />
               <button type="button" className="text-slate-500" onClick={() => setShowCurrentPassword((value) => !value)}>
                 {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -254,6 +285,7 @@ export function ProfilePage() {
                 value={form.password}
                 onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
                 placeholder="Leave blank if you do not want to change your password"
+                disabled={isSaving}
               />
               <button type="button" className="text-slate-500" onClick={() => setShowPassword((value) => !value)}>
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -262,7 +294,7 @@ export function ProfilePage() {
           </label>
 
           <div className="md:col-span-2">
-            <Button type="submit">Save profile</Button>
+            <Button type="submit" disabled={isSaving || isUploadingImage || isRemovingImage}>{isSaving ? "Saving..." : "Save profile"}</Button>
           </div>
         </form>
       </Card>

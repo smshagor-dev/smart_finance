@@ -1,7 +1,7 @@
 "use client";
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { Bell, LogOut, Moon, Plus, Search, Settings, Shield, Sun, User, X } from "lucide-react";
+import { ArrowRightLeft, Bell, LogOut, Moon, Plus, Search, Settings, Sun, User, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useLiveUpdateListener } from "@/lib/live-client";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { logoutUser } from "@/lib/client-auth";
 import { ADMIN_PANEL_ITEMS, SIDEBAR_ITEMS } from "@/lib/constants";
 import { applyTheme } from "@/lib/theme-client";
+import { resolveAssetUrl } from "@/lib/uploads";
 
 export function Topbar({ user }) {
   const router = useRouter();
@@ -185,6 +186,7 @@ export function Topbar({ user }) {
       .map((part) => part[0]?.toUpperCase())
       .join("") || "U";
   const ThemeIcon = theme === "dark" ? Sun : Moon;
+  const userImageUrl = resolveAssetUrl(user?.image);
   return (
     <header className="mb-5 flex flex-col gap-4 min-[390px]:gap-5 sm:mb-6 lg:gap-5">
       <div className="space-y-3 pt-14 min-[390px]:pt-16 lg:hidden">
@@ -283,9 +285,9 @@ export function Topbar({ user }) {
               onClick={() => setMenuOpen((current) => !current)}
               aria-label="Open profile menu"
             >
-              {user?.image ? (
+              {userImageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={user.image} alt={user.name || "Profile image"} className="h-6.5 w-6.5 rounded-full object-cover" />
+                <img src={userImageUrl} alt={user.name || "Profile image"} className="h-6.5 w-6.5 rounded-full object-cover" />
               ) : (
                 <span className="inline-flex h-6.5 w-6.5 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground">{initials}</span>
               )}
@@ -323,7 +325,7 @@ export function Topbar({ user }) {
                       className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-muted"
                       onClick={() => setMenuOpen(false)}
                     >
-                      <Shield className="h-4 w-4 text-slate-500" />
+                      <ArrowRightLeft className="h-4 w-4 text-slate-500" />
                       {inAdminPanel ? "Back to App" : "Admin Panel"}
                     </Link>
                   ) : null}
@@ -473,9 +475,9 @@ export function Topbar({ user }) {
               onClick={() => setMenuOpen((current) => !current)}
               aria-label="Open profile menu"
             >
-              {user?.image ? (
+              {userImageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={user.image} alt={user.name || "Profile image"} className="h-7 w-7 rounded-full object-cover min-[390px]:h-8 min-[390px]:w-8" />
+                <img src={userImageUrl} alt={user.name || "Profile image"} className="h-7 w-7 rounded-full object-cover min-[390px]:h-8 min-[390px]:w-8" />
               ) : (
                 <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground min-[390px]:h-8 min-[390px]:w-8">
                   {initials}
@@ -515,7 +517,7 @@ export function Topbar({ user }) {
                       className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-muted"
                       onClick={() => setMenuOpen(false)}
                     >
-                      <Shield className="h-4 w-4 text-slate-500" />
+                      <ArrowRightLeft className="h-4 w-4 text-slate-500" />
                       {inAdminPanel ? "Back to App" : "Admin Panel"}
                     </Link>
                   ) : null}

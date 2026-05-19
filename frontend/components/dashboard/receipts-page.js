@@ -6,8 +6,11 @@ import { ExternalLink, FileImage, FileSpreadsheet, FileText, FileType2 } from "l
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useLiveUpdateListener } from "@/lib/live-client";
+import { resolveAssetUrl } from "@/lib/uploads";
 import { useToast } from "@/components/ui/toast-provider";
 import { formatDate } from "@/lib/utils";
+
+const RECEIPTS_QUERY = "/api/receipts?page=1&pageSize=200&sort=newest";
 
 function getFilePresentation(fileType) {
   if (fileType?.startsWith("image/")) {
@@ -44,10 +47,11 @@ function getFilePresentation(fileType) {
 export function ReceiptsPage() {
   const [file, setFile] = useState(null);
   const [receipts, setReceipts] = useState([]);
+  const [uploading, setUploading] = useState(false);
   const toast = useToast();
 
   async function loadReceipts() {
-    const response = await fetch("/api/receipts");
+    const response = await fetch(RECEIPTS_QUERY);
     const data = await response.json();
     setReceipts(data.items || []);
   }
@@ -56,7 +60,7 @@ export function ReceiptsPage() {
     let active = true;
 
     async function load() {
-      const response = await fetch("/api/receipts");
+      const response = await fetch(RECEIPTS_QUERY);
       const data = await response.json();
       if (!active) return;
       setReceipts(data.items || []);
@@ -77,11 +81,13 @@ export function ReceiptsPage() {
     if (!file) return;
     const formData = new FormData();
     formData.append("file", file);
+    setUploading(true);
 
     const response = await fetch("/api/receipts", {
       method: "POST",
       body: formData,
     });
+    setUploading(false);
 
     if (!response.ok) {
       toast.push("Receipt upload failed", "error");
@@ -104,8 +110,9 @@ export function ReceiptsPage() {
             type="file"
             accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
             onChange={(event) => setFile(event.target.files?.[0] || null)}
+            disabled={uploading}
           />
-          <Button type="submit">Upload receipt</Button>
+          <Button type="submit" disabled={!file || uploading}>{uploading ? "Uploading..." : "Upload receipt"}</Button>
         </form>
         <p className="mt-3 text-xs text-slate-500">Supported: all common image types, PDF, DOC, DOCX, XLS, XLSX, TXT. Max size 10MB.</p>
       </Card>
@@ -116,10 +123,11 @@ export function ReceiptsPage() {
             {(() => {
               const presentation = getFilePresentation(receipt.fileType);
               const Icon = presentation.icon;
+              const fileUrl = resolveAssetUrl(receipt.fileUrl);
 
               return presentation.kind === "image" ? (
                 <div className="relative h-52 w-full">
-                  <Image src={receipt.fileUrl} alt={receipt.originalName} fill className="object-cover" />
+                  <Image src={fileUrl} alt={receipt.originalName} fill className="object-cover" unoptimized />
                 </div>
               ) : (
                 <div className="flex h-52 w-full items-center justify-center bg-muted">
@@ -139,7 +147,7 @@ export function ReceiptsPage() {
               <p className="font-medium">{receipt.originalName}</p>
               <p className="mt-1 text-sm text-slate-500">{receipt.fileType}</p>
               <p className="mt-1 text-xs text-slate-500">Uploaded {formatDate(receipt.uploadedAt)}</p>
-              <a href={receipt.fileUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-primary">
+              <a href={resolveAssetUrl(receipt.fileUrl)} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-primary">
                 Open file
                 <ExternalLink className="h-4 w-4" />
               </a>
