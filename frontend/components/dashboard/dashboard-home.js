@@ -16,7 +16,6 @@ export function DashboardHome() {
   const [data, setData] = useState(null);
   const [setupDismissed, setSetupDismissed] = useState(false);
   const [lookupData, setLookupData] = useState({});
-  const [lookupsLoaded, setLookupsLoaded] = useState(false);
 
   async function loadDashboard() {
     const response = await fetch("/api/dashboard/overview");
@@ -59,18 +58,11 @@ export function DashboardHome() {
     let active = true;
 
     function loadLookups() {
-      setLookupsLoaded(false);
       fetch("/api/dashboard/overview?mode=lookups", { cache: "no-store" })
         .then((response) => response.json())
         .then((payload) => {
           if (active) {
             setLookupData(payload.lookups || {});
-            setLookupsLoaded(true);
-          }
-        })
-        .catch(() => {
-          if (active) {
-            setLookupsLoaded(true);
           }
         });
     }
@@ -110,8 +102,8 @@ export function DashboardHome() {
   const budgets = data.budgets || [];
   const insights = data.insights || [];
   const walletOptions = lookupData.wallets || [];
-  const hasWallets = walletSummary.length > 0 || walletOptions.length > 0;
-  const shouldShowSetup = Boolean(data) && lookupsLoaded && !setupDismissed && !hasWallets;
+  const hasWallets = walletOptions.length > 0;
+  const shouldShowSetup = Boolean(data) && !setupDismissed && !hasWallets;
 
   function openSetup(mode, categoryType = "expense") {
     setSetupDismissed(true);
