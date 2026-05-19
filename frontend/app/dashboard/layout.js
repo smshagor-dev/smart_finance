@@ -9,10 +9,24 @@ import { Sidebar } from "@/components/dashboard/sidebar";
 import { Topbar } from "@/components/dashboard/topbar";
 import { ToastProvider } from "@/components/ui/toast-provider";
 import { requireUser } from "@/lib/auth";
+import { getPublicSiteSettings } from "@/lib/site-settings";
 import { Toaster } from "sonner";
 
 export default async function DashboardLayout({ children }) {
   const user = await requireUser();
+  let siteSettings;
+
+  try {
+    siteSettings = await getPublicSiteSettings();
+  } catch {
+    siteSettings = {
+      siteName: "Finance Tracker",
+      siteTagline: "Personal finance command center",
+    };
+  }
+
+  const siteName = siteSettings.siteName || "Finance Tracker";
+  const siteTagline = siteSettings.siteTagline || "Personal finance command center";
 
   return (
     <ToastProvider>
@@ -20,7 +34,7 @@ export default async function DashboardLayout({ children }) {
         <LiveUpdatesProvider />
         <NotificationRealtimeListener />
         <AuthOnboardingGate user={user} />
-        <Sidebar user={user} />
+        <Sidebar user={user} siteName={siteName} siteTagline={siteTagline} />
         <main className="lg:pl-72">
           <div className="mx-auto max-w-7xl px-4 pb-28 pt-4 min-[375px]:px-5 min-[390px]:pt-4 min-[430px]:px-6 sm:pb-8 sm:pt-5 lg:p-8">
             <Topbar user={user} />

@@ -65,7 +65,7 @@ const sidebarIconMap = {
   "/dashboard/admin/auth-providers": ArrowRightLeft,
 };
 
-export function Sidebar({ user }) {
+export function Sidebar({ user, siteName = "Finance Tracker", siteTagline = "Personal finance command center" }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const isAdmin = user?.role === "admin";
@@ -128,8 +128,8 @@ export function Sidebar({ user }) {
             )}
           </div>
           <div>
-            <p className="text-lg font-semibold">Finance Tracker</p>
-            <p className="text-sm text-emerald-100/70">Personal finance command center</p>
+            <p className="text-lg font-semibold">{siteName}</p>
+            <p className="text-sm text-emerald-100/70">{siteTagline}</p>
           </div>
         </div>
 
@@ -179,10 +179,6 @@ export function Sidebar({ user }) {
           </div>
         ) : null}
 
-        <div className="mt-5 border-t border-white/10 pt-4 text-center lg:hidden">
-          <p className="text-sm font-semibold text-emerald-50">Finance Tracker v1.0.1</p>
-          <p className="mt-2 text-[11px] text-emerald-100/55">© {new Date().getFullYear()} Finance Tracker. All rights reserved.</p>
-        </div>
       </aside>
 
       <div className="fixed inset-x-4 bottom-4 z-30 lg:hidden">
