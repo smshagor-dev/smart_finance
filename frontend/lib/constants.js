@@ -25,6 +25,7 @@ export const SIDEBAR_ITEMS = [
   { href: "/dashboard/receipts", label: "Receipts" },
   { href: "/dashboard/currencies", label: "Currencies" },
   { href: "/dashboard/groups", label: "Groups" },
+  { href: "/dashboard/policy", label: "Policy" },
   { href: "/dashboard/settings", label: "Settings" },
   { href: "/dashboard/profile", label: "Profile" },
 ];
@@ -32,6 +33,7 @@ export const SIDEBAR_ITEMS = [
 export const ADMIN_PANEL_ITEMS = [
   { href: "/dashboard/admin", label: "Overview" },
   { href: "/dashboard/admin/users", label: "Users" },
+  { href: "/dashboard/admin/custom-pages", label: "Custom Pages" },
   { href: "/dashboard/admin/activity", label: "Activity" },
   { href: "/dashboard/admin/integrity", label: "Integrity" },
   { href: "/dashboard/admin/access", label: "Access" },

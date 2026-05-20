@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "../../node_modules/ckeditor5/dist/ckeditor5.css";
 
 :root {
   --background: #f3f6ef;
@@ -183,4 +184,145 @@ textarea {
 
 [data-theme="dark"] .auth-shell .text-\[\#075C2B\] {
   color: #6ee7b7 !important;
+}
+
+.ckeditor5-shell .ck.ck-editor {
+  color: var(--foreground);
+}
+
+.ckeditor5-shell .ck.ck-toolbar,
+.ckeditor5-shell .ck.ck-editor__main > .ck-editor__editable,
+.ckeditor5-shell .ck.ck-dropdown__panel,
+.ckeditor5-shell .ck.ck-input {
+  font-family: var(--font-sans);
+}
+
+.ckeditor5-shell .ck.ck-toolbar {
+  border-color: var(--border);
+  background: color-mix(in srgb, var(--card) 94%, white 6%);
+  border-top-left-radius: 1rem;
+  border-top-right-radius: 1rem;
+}
+
+.ckeditor5-shell .ck.ck-editor__main > .ck-editor__editable {
+  min-height: 420px;
+  border-color: var(--border);
+  background: var(--card);
+  color: var(--foreground);
+  border-bottom-left-radius: 1rem;
+  border-bottom-right-radius: 1rem;
+}
+
+.ckeditor5-shell .ck.ck-button:not(.ck-disabled):hover,
+.ckeditor5-shell .ck.ck-button.ck-on {
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+}
+
+.ckeditor5-shell .ck.ck-button,
+.ckeditor5-shell .ck.ck-toolbar__separator {
+  color: var(--foreground);
+  border-color: var(--border);
+}
+
+[data-theme="dark"] .ckeditor5-shell .ck.ck-toolbar,
+[data-theme="dark"] .ckeditor5-shell .ck.ck-editor__main > .ck-editor__editable,
+[data-theme="dark"] .ckeditor5-shell .ck.ck-dropdown__panel,
+[data-theme="dark"] .ckeditor5-shell .ck.ck-input {
+  background: #101a13;
+  color: #e7f2ea;
+  border-color: #25352b;
+}
+
+[data-theme="dark"] .ckeditor5-shell .ck.ck-button,
+[data-theme="dark"] .ckeditor5-shell .ck.ck-button .ck-button__label,
+[data-theme="dark"] .ckeditor5-shell .ck.ck-icon {
+  color: #e7f2ea;
+}
+
+.custom-page-content {
+  color: inherit;
+  line-height: 1.8;
+}
+
+.custom-page-content > * + * {
+  margin-top: 1rem;
+}
+
+.custom-page-content h1,
+.custom-page-content h2,
+.custom-page-content h3,
+.custom-page-content h4,
+.custom-page-content h5,
+.custom-page-content h6 {
+  margin-top: 1.75rem;
+  margin-bottom: 0.75rem;
+  color: inherit;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.custom-page-content h1 { font-size: 2rem; }
+.custom-page-content h2 { font-size: 1.625rem; }
+.custom-page-content h3 { font-size: 1.375rem; }
+.custom-page-content h4 { font-size: 1.125rem; }
+
+.custom-page-content p,
+.custom-page-content li,
+.custom-page-content td,
+.custom-page-content th,
+.custom-page-content blockquote {
+  color: inherit;
+}
+
+.custom-page-content a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.custom-page-content ul,
+.custom-page-content ol {
+  padding-left: 1.4rem;
+}
+
+.custom-page-content blockquote {
+  border-left: 4px solid color-mix(in srgb, var(--primary) 65%, transparent);
+  background: color-mix(in srgb, var(--muted) 70%, transparent);
+  border-radius: 1.25rem;
+  padding: 1rem 1.1rem;
+}
+
+.custom-page-content pre,
+.custom-page-content code {
+  font-family: var(--font-mono);
+}
+
+.custom-page-content pre {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--muted) 88%, transparent);
+  border-radius: 1.25rem;
+  padding: 1rem;
+}
+
+.custom-page-content table {
+  width: 100%;
+  border-collapse: collapse;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+}
+
+.custom-page-content th,
+.custom-page-content td {
+  border: 1px solid var(--border);
+  padding: 0.85rem 0.9rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.custom-page-content img,
+.custom-page-content iframe {
+  max-width: 100%;
+  border-radius: 1.25rem;
 }

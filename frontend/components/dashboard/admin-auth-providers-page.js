@@ -54,6 +54,7 @@ function createEmptyForm(provider) {
     isEnabled: false,
     clientSecretMasked: "",
     botTokenMasked: "",
+    recommendedCallbackUrl: "",
     hasRequiredConfig: false,
     isAvailable: false,
   };
@@ -166,7 +167,7 @@ export function AdminAuthProvidersPage() {
             </p>
           </div>
           <div className="rounded-3xl border border-white/10 bg-white/10 p-4 text-sm text-emerald-50/85">
-            Missing callback or redirect URLs automatically keeps a provider unavailable even if the toggle is switched on.
+            Use your app domain for callback URLs so OAuth cookies stay on the same host. Missing callback or redirect URLs also keeps a provider unavailable.
           </div>
         </div>
       </Card>
@@ -237,8 +238,11 @@ export function AdminAuthProvidersPage() {
                     className="w-full rounded-2xl border border-border bg-white px-4 py-3 outline-none"
                     value={form.callbackUrl || ""}
                     onChange={(event) => updateForm(providerMeta.key, { callbackUrl: event.target.value })}
-                    placeholder={`https://your-backend-domain.com/api/auth/${providerMeta.key}/callback`}
+                    placeholder={form.recommendedCallbackUrl || `/api/auth/${providerMeta.key}/callback`}
                   />
+                  <p className="mt-1 text-xs text-slate-500">
+                    Recommended: {form.recommendedCallbackUrl || `https://your-app-domain.com/api/auth/${providerMeta.key}/callback`}
+                  </p>
                 </label>
 
                 <label>

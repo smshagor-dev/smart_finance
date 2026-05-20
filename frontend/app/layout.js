@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import Script from "next/script";
 import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 import { FrontendNoCache } from "@/components/frontend-no-cache";
@@ -60,11 +61,6 @@ function themeInitializationScript(initialTheme) {
   return `
     (function() {
       try {
-        var nodes = document.querySelectorAll('[bis_skin_checked]');
-        for (var i = 0; i < nodes.length; i += 1) {
-          nodes[i].removeAttribute('bis_skin_checked');
-        }
-
         var stored = window.localStorage.getItem('finance_tracker_theme');
         var fallback = '${initialTheme}';
         var theme = stored === 'dark' || stored === 'light' ? stored : fallback;
@@ -92,10 +88,12 @@ export default async function RootLayout({ children }) {
   return (
     <html lang="en" className="h-full antialiased" data-theme={theme} suppressHydrationWarning>
       <head>
-        <script id="theme-init" dangerouslySetInnerHTML={{ __html: themeInitializationScript(theme) }} />
+        <Script id="theme-init" strategy="beforeInteractive">
+          {themeInitializationScript(theme)}
+        </Script>
         {siteSettings.logoUrl || siteSettings.iconUrl ? <link rel="icon" href={resolveAssetUrl(siteSettings.logoUrl || siteSettings.iconUrl)} /> : null}
       </head>
-      <body className="min-h-full">
+      <body className="min-h-full" suppressHydrationWarning>
         <FrontendNoCache />
         <PwaRegistration />
         {children}

@@ -11,6 +11,7 @@ import {
   CircleUserRound,
   Coins,
   CreditCard,
+  FileText,
   FileBarChart2,
   FolderKanban,
   HandCoins,
@@ -51,10 +52,12 @@ const sidebarIconMap = {
   "/dashboard/receipts": ReceiptText,
   "/dashboard/currencies": Coins,
   "/dashboard/groups": Users,
+  "/dashboard/policy": FileText,
   "/dashboard/settings": Settings,
   "/dashboard/profile": CircleUserRound,
   "/dashboard/admin": LayoutDashboard,
   "/dashboard/admin/users": CircleUserRound,
+  "/dashboard/admin/custom-pages": FileText,
   "/dashboard/admin/activity": ChartColumn,
   "/dashboard/admin/integrity": Shield,
   "/dashboard/admin/access": CreditCard,
@@ -65,9 +68,12 @@ const sidebarIconMap = {
   "/dashboard/admin/auth-providers": ArrowRightLeft,
 };
 
+const APP_VERSION = "1.0.1";
+
 export function Sidebar({ user, siteName = "Finance Tracker", siteTagline = "Personal finance command center" }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const currentYear = new Date().getFullYear();
   const isAdmin = user?.role === "admin";
   const inAdminPanel = pathname.startsWith("/dashboard/admin");
   const items = inAdminPanel ? ADMIN_PANEL_ITEMS : SIDEBAR_ITEMS;
@@ -95,7 +101,7 @@ export function Sidebar({ user, siteName = "Finance Tracker", siteTagline = "Per
       {open ? <button className="fixed inset-0 z-20 bg-slate-950/35 lg:hidden" onClick={() => setOpen(false)} aria-label="Close navigation" /> : null}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-30 flex h-screen w-[85vw] max-w-72 flex-col border-r border-border bg-[#112215] px-5 py-6 pb-28 text-white transition lg:w-72 lg:translate-x-0 lg:pb-6",
+          "fixed inset-y-0 left-0 z-40 flex h-screen w-[85vw] max-w-72 flex-col border-r border-border bg-[#112215] px-5 py-6 pb-28 text-white transition lg:w-72 lg:translate-x-0 lg:pb-6",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -133,7 +139,7 @@ export function Sidebar({ user, siteName = "Finance Tracker", siteTagline = "Per
           </div>
         </div>
 
-        <nav className="flex-1 space-y-2 overflow-y-auto pr-1 pb-4">
+        <nav className="flex-1 space-y-2 overflow-y-auto pr-1 pb-40 lg:pb-4">
           {items.map((item) => {
             const active =
               item.href === "/dashboard" || item.href === "/dashboard/admin"
@@ -178,6 +184,24 @@ export function Sidebar({ user, siteName = "Finance Tracker", siteTagline = "Per
             </Link>
           </div>
         ) : null}
+
+        <div className="pointer-events-none absolute right-5 bottom-3 left-5 z-50 lg:pointer-events-auto lg:static lg:right-auto lg:bottom-auto lg:left-auto lg:z-auto lg:mt-6">
+          <div className="group relative overflow-hidden rounded-[28px] border border-white/10 bg-white/5 p-4 text-emerald-50/88 shadow-[0_18px_50px_rgba(3,12,8,0.34)] backdrop-blur-2xl transition duration-300 hover:-translate-y-0.5 hover:border-emerald-300/20 hover:bg-white/[0.07] hover:shadow-[0_24px_70px_rgba(6,35,20,0.42)] active:scale-[0.985] sm:p-5">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(52,211,153,0.16),transparent_38%),linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))]" />
+          <div className="pointer-events-none absolute -top-12 right-[-10%] h-28 w-28 rounded-full bg-emerald-400/12 blur-3xl transition duration-300 group-hover:bg-emerald-300/18" />
+          <div className="pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+
+          <div className="relative">
+            <div className="text-center">
+              <p className="text-sm font-semibold tracking-[0.08em] text-white sm:text-[1.05rem]">{`Version ${APP_VERSION}`}</p>
+            </div>
+
+            <div className="my-4 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent" />
+
+            <p className="text-center text-[11px] leading-5 text-emerald-100/62">{`© ${currentYear} ${siteName} All rights reserved.`}</p>
+          </div>
+        </div>
+        </div>
 
       </aside>
 

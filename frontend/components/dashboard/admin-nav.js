@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, FolderTree, Layers3, MessagesSquare, Settings2, ShieldCheck, Users } from "lucide-react";
+import { BarChart3, FileText, FolderTree, Layers3, MessagesSquare, Settings2, ShieldCheck, Users } from "lucide-react";
 import { ADMIN_PANEL_ITEMS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 const iconMap = {
   "/dashboard/admin": ShieldCheck,
   "/dashboard/admin/users": Users,
+  "/dashboard/admin/custom-pages": FileText,
   "/dashboard/admin/activity": BarChart3,
   "/dashboard/admin/integrity": Layers3,
   "/dashboard/admin/access": ShieldCheck,
@@ -22,6 +23,7 @@ const iconMap = {
 const descriptionMap = {
   "/dashboard/admin": "Platform snapshot",
   "/dashboard/admin/users": "Manage every account",
+  "/dashboard/admin/custom-pages": "Public legal and company pages",
   "/dashboard/admin/activity": "Track global changes",
   "/dashboard/admin/integrity": "Incomplete and risky records",
   "/dashboard/admin/access": "Users, sessions, and auth",

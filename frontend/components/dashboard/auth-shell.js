@@ -104,6 +104,13 @@ export function AuthShell({ mode = "login", siteName, siteTagline, siteDescripti
                     {footerLabel}
                   </Link>
                 </p>
+                <div className="mt-2 flex items-center justify-center gap-3 text-xs text-[#6B7280]">
+                  <span className="h-px w-8 bg-[#0F7A3A]/12" />
+                  <Link href="/policy" className="font-medium text-[#075C2B] transition hover:text-[#0F7A3A]">
+                    Policy
+                  </Link>
+                  <span className="h-px w-8 bg-[#0F7A3A]/12" />
+                </div>
               </div>
             </div>
           </div>

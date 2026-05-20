@@ -20,7 +20,13 @@ export function Topbar({ user }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [theme, setTheme] = useState("light");
+  const [theme, setTheme] = useState(() => {
+    if (typeof document === "undefined") {
+      return "light";
+    }
+
+    return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+  });
   const mobileMenuRef = useRef(null);
   const desktopMenuRef = useRef(null);
   const isAdmin = user?.role === "admin";
@@ -132,11 +138,6 @@ export function Topbar({ user }) {
     return () => {
       active = false;
     };
-  }, []);
-
-  useEffect(() => {
-    const currentTheme = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
-    setTheme(currentTheme);
   }, []);
 
   useLiveUpdateListener(["notifications"], () => {
