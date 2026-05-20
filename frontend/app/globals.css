@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "../../node_modules/ckeditor5/dist/ckeditor5.css";
+@import "./ckeditor5.css";
 
 :root {
   --background: #f3f6ef;

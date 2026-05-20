@@ -13,6 +13,7 @@ const isValidHttpUrl = (value) => {
 };
 const isUploadOrHttpUrl = (value) => !value || value.startsWith("/uploads/") || isValidHttpUrl(value);
 const isRedirectValue = (value) => !value || value.startsWith("/") || isValidHttpUrl(value);
+const pageStatusValues = ["draft", "published"];
 
 export const registerSchema = z.object({
   name: z.string().trim().min(2).max(80),
@@ -276,3 +277,18 @@ export const siteSettingsSchema = z.object({
 });
 
 export const siteSettingsPatchSchema = siteSettingsSchema.partial();
+
+export const customPageSchema = z.object({
+  title: z.string().trim().min(1, "Title is required").max(180),
+  slug: z.string().trim().min(1, "Slug is required").max(160),
+  shortDescription: z.string().trim().max(500).optional().nullable().or(z.literal("")),
+  content: z.string().trim().min(1, "Content is required"),
+  metaTitle: z.string().trim().max(160).optional().nullable().or(z.literal("")),
+  metaDescription: z.string().trim().max(320).optional().nullable().or(z.literal("")),
+  metaKeywords: z.string().trim().max(500).optional().nullable().or(z.literal("")),
+  status: z.enum(pageStatusValues).optional().default("draft"),
+});
+
+export const customPageStatusSchema = z.object({
+  status: z.enum(pageStatusValues),
+});

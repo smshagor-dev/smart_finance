@@ -1,5 +1,6 @@
+import runtimeEnv from "../config/runtime-env.cjs";
 import { prisma } from "./prisma.js";
-import { decryptSecret, encryptSecret, isMaskedSecret, isValidRedirectValue, maskSecret, resolveSafeRedirect } from "./security.js";
+import { decryptSecret, encryptSecret, isMaskedSecret, isValidHttpUrl, isValidRedirectValue, maskSecret, resolveSafeRedirect } from "./security.js";
 
 export const SOCIAL_AUTH_PROVIDERS = ["google", "facebook", "telegram"];
 
@@ -14,6 +15,34 @@ const PROVIDER_REQUIREMENTS = {
   facebook: ["clientId", "clientSecret", "callbackUrl", "successRedirectUrl", "failureRedirectUrl"],
   telegram: ["botToken", "callbackUrl", "successRedirectUrl", "failureRedirectUrl"],
 };
+
+function normalizeOrigin(value) {
+  return String(value || "").trim().replace(/\/$/, "");
+}
+
+function getAllowedCallbackOrigins() {
+  const serverConfig = runtimeEnv.getServerConfig();
+  return new Set([
+    normalizeOrigin(serverConfig.frontendUrl),
+    normalizeOrigin(serverConfig.appUrl),
+    ...serverConfig.allowedOrigins.map(normalizeOrigin),
+  ]);
+}
+
+function isAllowedCallbackUrl(value) {
+  if (!value || !isValidHttpUrl(value)) {
+    return false;
+  }
+
+  const origin = normalizeOrigin(new URL(value).origin);
+  return getAllowedCallbackOrigins().has(origin);
+}
+
+function getRecommendedCallbackUrl(provider) {
+  const serverConfig = runtimeEnv.getServerConfig();
+  const baseUrl = normalizeOrigin(serverConfig.appUrl || serverConfig.frontendUrl);
+  return baseUrl ? `${baseUrl}/api/auth/${provider}/callback` : "";
+}
 
 function normalizeRecord(record) {
   if (!record) {
@@ -41,6 +70,10 @@ export function hasRequiredProviderConfig(setting) {
       return false;
     }
 
+    if (field === "callbackUrl") {
+      return isAllowedCallbackUrl(String(value).trim());
+    }
+
     if (field.endsWith("Url")) {
       return isValidRedirectValue(String(value).trim());
     }
@@ -60,6 +93,7 @@ export function toAdminProviderSetting(setting) {
 
   return {
     ...setting,
+    recommendedCallbackUrl: getRecommendedCallbackUrl(setting.provider),
     clientSecretMasked: maskSecret(setting.clientSecret),
     botTokenMasked: maskSecret(setting.botToken),
     clientSecret: undefined,
@@ -120,6 +154,10 @@ export async function getAuthProviderSetting(provider) {
 export async function saveAuthProviderSetting(provider, payload) {
   if (!SOCIAL_AUTH_PROVIDERS.includes(provider)) {
     throw new Error("Unsupported provider");
+  }
+
+  if (payload.callbackUrl && !isAllowedCallbackUrl(payload.callbackUrl)) {
+    throw new Error(`Callback URL must use your app domain, for example ${getRecommendedCallbackUrl(provider)}`);
   }
 
   const existing = await getAuthProviderSetting(provider);
