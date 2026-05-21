@@ -21,6 +21,16 @@ export async function GET(request) {
     const headers = new Headers({
       "Content-Type": "text/html; charset=utf-8",
       "Set-Cookie": buildOAuthStateCookie(state),
+      "Content-Security-Policy": [
+        "default-src 'none'",
+        "base-uri 'none'",
+        "form-action 'self'",
+        "frame-ancestors 'none'",
+        "script-src https://telegram.org",
+        "style-src 'unsafe-inline'",
+        "img-src 'self' data: https://telegram.org https://oauth.telegram.org",
+        "frame-src https://telegram.org https://oauth.telegram.org",
+      ].join("; "),
     });
 
     return new Response(
