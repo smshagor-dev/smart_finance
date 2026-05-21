@@ -43,6 +43,12 @@ export function AuthOnboardingGate({ user }) {
   const onboarding = profile?.onboarding || { required: false, emailRequired: false, defaultCurrencyRequired: false };
   const step = onboarding.emailRequired ? "email" : onboarding.defaultCurrencyRequired ? "currency" : "";
 
+  useEffect(() => {
+    setProfile(user);
+    setEmail(user?.email || "");
+    setSelectedCurrency(user?.defaultCurrencyId || "");
+  }, [user]);
+
   const selectedCurrencyOption = useMemo(
     () => currencies.find((currency) => currency.id === selectedCurrency),
     [currencies, selectedCurrency],
@@ -221,6 +227,16 @@ export function AuthOnboardingGate({ user }) {
       return;
     }
 
+    setProfile((current) => ({
+      ...current,
+      defaultCurrencyId: selectedCurrency,
+      onboarding: {
+        ...(current?.onboarding || {}),
+        defaultCurrencyRequired: false,
+        required: false,
+      },
+    }));
+    setCurrencyOpen(false);
     await refreshProfile();
   }
 
@@ -229,10 +245,10 @@ export function AuthOnboardingGate({ user }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[90] bg-slate-950/55 px-4 py-6 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[90] overflow-y-auto bg-slate-950/55 px-4 py-6 backdrop-blur-sm">
       <div className="flex min-h-full items-center justify-center">
-        <div className="w-full max-w-xl overflow-hidden rounded-[2rem] border border-[#0F7A3A]/12 bg-white shadow-[0_24px_90px_rgba(7,92,43,0.18)]">
-          <div className="bg-[linear-gradient(160deg,#108A45_0%,#0F7A3A_52%,#075C2B_100%)] px-6 py-6 text-white">
+        <div className="flex max-h-[calc(100vh-3rem)] w-full max-w-xl flex-col rounded-[2rem] border border-[#0F7A3A]/12 bg-white shadow-[0_24px_90px_rgba(7,92,43,0.18)]">
+          <div className="shrink-0 rounded-t-[2rem] bg-[linear-gradient(160deg,#108A45_0%,#0F7A3A_52%,#075C2B_100%)] px-6 py-6 text-white">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/75">Onboarding</p>
             <h2 className="mt-3 text-[1.8rem] font-semibold leading-tight">
               {step === "email" ? "Complete your email before continuing" : "Choose your default currency"}
@@ -244,7 +260,7 @@ export function AuthOnboardingGate({ user }) {
             </p>
           </div>
 
-          <div className="px-6 py-6">
+          <div className="overflow-y-auto px-6 py-6">
             {step === "email" ? (
               <form className="space-y-4" onSubmit={handleEmailSubmit}>
                 <label className="block">
@@ -290,7 +306,7 @@ export function AuthOnboardingGate({ user }) {
               </form>
             ) : (
               <form className="space-y-4" onSubmit={handleCurrencySubmit}>
-                <div className="relative">
+                <div>
                   <span className="mb-2 block text-sm font-medium text-slate-800">Default currency</span>
                   <button
                     type="button"
@@ -309,7 +325,7 @@ export function AuthOnboardingGate({ user }) {
                   </button>
 
                   {currencyOpen ? (
-                    <div className="absolute z-20 mt-2 w-full rounded-[1.6rem] border border-[#0F7A3A]/14 bg-white p-3 shadow-[0_18px_45px_rgba(7,92,43,0.16)]">
+                    <div className="mt-2 w-full rounded-[1.6rem] border border-[#0F7A3A]/14 bg-white p-3 shadow-[0_18px_45px_rgba(7,92,43,0.16)]">
                       <div className="mb-3 flex items-center gap-2 rounded-2xl border border-[#0F7A3A]/14 bg-[#BFE7D6]/20 px-3 py-3">
                         <Search className="h-4 w-4 text-[#075C2B]" />
                         <input

@@ -23,7 +23,7 @@ export function DashboardShell({
         <NotificationRealtimeListener />
         <AuthOnboardingGate user={user} />
         <Sidebar user={user} siteName={siteName} siteTagline={siteTagline} />
-        <main className="lg:pl-72">
+        <main className="lg:pl-[298px]">
           <div className="mx-auto max-w-7xl px-4 pb-28 pt-4 min-[375px]:px-5 min-[390px]:pt-4 min-[430px]:px-6 sm:pb-8 sm:pt-5 lg:p-8">
             <Topbar user={user} />
             <PwaInstallBanner />

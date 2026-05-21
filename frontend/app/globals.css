@@ -244,6 +244,11 @@ textarea {
   line-height: 1.8;
 }
 
+.custom-page-content strong,
+.custom-page-content b {
+  color: var(--foreground);
+}
+
 .custom-page-content > * + * {
   margin-top: 1rem;
 }
@@ -319,6 +324,10 @@ textarea {
   padding: 0.85rem 0.9rem;
   text-align: left;
   vertical-align: top;
+}
+
+.custom-page-content th {
+  background: color-mix(in srgb, var(--muted) 82%, white 18%);
 }
 
 .custom-page-content img,

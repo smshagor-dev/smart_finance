@@ -101,7 +101,7 @@ export function Sidebar({ user, siteName = "Finance Tracker", siteTagline = "Per
       {open ? <button className="fixed inset-0 z-20 bg-slate-950/35 lg:hidden" onClick={() => setOpen(false)} aria-label="Close navigation" /> : null}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex h-screen w-[85vw] max-w-72 flex-col border-r border-border bg-[#112215] px-5 py-6 pb-28 text-white transition lg:w-72 lg:translate-x-0 lg:pb-6",
+          "fixed inset-y-0 left-0 z-40 flex h-screen w-[85vw] max-w-[298px] flex-col border-r border-border bg-[#112215] px-5 py-6 pb-28 text-white transition lg:w-[298px] lg:translate-x-0 lg:pb-6",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -133,9 +133,9 @@ export function Sidebar({ user, siteName = "Finance Tracker", siteTagline = "Per
               <Landmark className="h-6 w-6" />
             )}
           </div>
-          <div>
-            <p className="text-lg font-semibold">{siteName}</p>
-            <p className="text-sm text-emerald-100/70">{siteTagline}</p>
+          <div className="min-w-0">
+            <p className="truncate text-lg font-semibold">{user?.name || "Smart Finance User"}</p>
+            <p className="truncate text-sm text-emerald-100/70">{user?.email || "No email available"}</p>
           </div>
         </div>
 
