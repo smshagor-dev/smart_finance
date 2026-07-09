@@ -498,6 +498,19 @@ async function handleUploadsRequest(request, pathname, requestId) {
   }
 }
 
+async function checkDatabaseConnection() {
+  const prisma = getPrismaClient();
+  await prisma.$connect();
+
+  const db = runtimeEnv.getDatabaseConfig();
+  if (db.protocol.startsWith("mongodb")) {
+    await prisma.$runCommandRaw({ ping: 1 });
+    return;
+  }
+
+  await prisma.$queryRawUnsafe("SELECT 1");
+}
+
 export async function handleBackendRequest(request) {
   const requestId = crypto.randomUUID();
 
@@ -518,22 +531,43 @@ export async function handleBackendRequest(request) {
     }
 
     if (pathname === "/health" || pathname === "/api/health") {
-      const payload = {
-        service: "smart-finance-backend",
-        status: "ok",
-        endpoint: pathname,
-        mode: "vercel",
-        database: {
-          status: "connected",
-        },
-        timestamp: new Date().toISOString(),
-      };
+      try {
+        await checkDatabaseConnection();
+        const payload = {
+          service: "smart-finance-backend",
+          status: "ok",
+          endpoint: pathname,
+          mode: "vercel",
+          database: {
+            status: "connected",
+          },
+          timestamp: new Date().toISOString(),
+        };
 
-      if (pathname === "/health" || (pathname === "/api/health" && wantsHtmlResponse(request))) {
-        return htmlResponse(request, 200, renderHealthPage(payload, origin), requestId);
+        if (pathname === "/health" || (pathname === "/api/health" && wantsHtmlResponse(request))) {
+          return htmlResponse(request, 200, renderHealthPage(payload, origin), requestId);
+        }
+
+        return jsonResponse(request, 200, payload, requestId);
+      } catch (error) {
+        const payload = {
+          service: "smart-finance-backend",
+          status: "degraded",
+          endpoint: pathname,
+          mode: "vercel",
+          database: {
+            status: "disconnected",
+            error: runtimeEnv.isProduction() ? "Database unavailable" : error.message,
+          },
+          timestamp: new Date().toISOString(),
+        };
+
+        if (pathname === "/health" || (pathname === "/api/health" && wantsHtmlResponse(request))) {
+          return htmlResponse(request, 503, renderHealthPage(payload, origin), requestId);
+        }
+
+        return jsonResponse(request, 503, payload, requestId);
       }
-
-      return jsonResponse(request, 200, payload, requestId);
     }
 
     if (pathname.startsWith("/uploads/")) {
@@ -559,16 +593,13 @@ export async function handleBackendRequest(request) {
 
     let response;
     try {
-      const prisma = getPrismaClient();
-      await prisma.$connect();
       response = await executeHandler();
     } catch (error) {
       if (!isRetryableDatabaseError(error)) {
         throw error;
       }
 
-      const prisma = await resetPrismaClient();
-      await prisma.$connect();
+      await resetPrismaClient();
       response = await executeHandler();
     }
 

@@ -736,16 +736,13 @@ async function handleNodeRequest(req, res) {
 
     let response;
     try {
-      const prisma = getPrismaClient();
-      await prisma.$connect();
       response = await executeHandler();
     } catch (error) {
       if (!isRetryableDatabaseError(error)) {
         throw error;
       }
 
-      const prisma = await resetPrismaClient();
-      await prisma.$connect();
+      await resetPrismaClient();
       response = await executeHandler();
     }
 
