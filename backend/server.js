@@ -291,62 +291,9 @@ function renderStatusPill(label, tone = "neutral") {
   return `<span style="display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:999px;border:1px solid ${toneStyles[tone] || toneStyles.neutral}font:700 12px/1 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;">${escapeHtml(label)}</span>`;
 }
 
-async function getApiExplorerEntries() {
-  const routes = getRoutes();
-  const entries = await Promise.all(
-    routes.map(async (route) => {
-      const routeModule = await loadRouteModule(route.filePath);
-      const methods = ["GET", "POST", "PUT", "PATCH", "DELETE"].filter((method) => typeof routeModule[method] === "function");
-
-      return {
-        path: route.pattern,
-        methods: methods.length ? methods : ["GET"],
-      };
-    }),
-  );
-
-  entries.unshift({
-    path: "/api/health",
-    methods: ["GET"],
-  });
-
-  return entries.sort((a, b) => a.path.localeCompare(b.path));
-}
-
-function renderApiMethodBadge(method) {
-  const tones = {
-    GET: "background:#dcfce7;color:#166534;",
-    POST: "background:#dbeafe;color:#1d4ed8;",
-    PUT: "background:#ede9fe;color:#6d28d9;",
-    PATCH: "background:#fef3c7;color:#b45309;",
-    DELETE: "background:#fee2e2;color:#b91c1c;",
-  };
-
-  return `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:62px;padding:8px 10px;border-radius:999px;font:800 11px/1 Arial,sans-serif;letter-spacing:.08em;${tones[method] || "background:#e2e8f0;color:#334155;"}">${escapeHtml(method)}</span>`;
-}
-
-function renderEndpointRows(entries) {
-  return entries
-    .map(
-      (entry) => `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:14px 16px;border-radius:18px;background:#ffffff;border:1px solid rgba(15,23,42,.08);">
-        <div style="min-width:0;">
-          <p style="margin:0 0 6px;font:700 12px/1 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#b45309;">Endpoint</p>
-          <p style="margin:0;font:600 14px/1.6 Consolas,monospace;color:#0f172a;word-break:break-word;">${escapeHtml(entry.path)}</p>
-        </div>
-        <div style="display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;">
-          ${entry.methods.map((method) => renderApiMethodBadge(method)).join("")}
-        </div>
-      </div>`,
-    )
-    .join("");
-}
-
-async function renderHomePage(req) {
+function renderHomePage(req) {
   const { origin } = getRequestOriginDetails(req);
   const serverConfig = getServerConfig();
-  const apiEntries = await getApiExplorerEntries();
-  const endpointRows = renderEndpointRows(apiEntries);
-  const exampleEndpoint = apiEntries.find((entry) => entry.path !== "/api/health")?.path || "/api/health";
 
   return `<!doctype html>
 <html lang="en">
@@ -391,46 +338,6 @@ async function renderHomePage(req) {
             <p style="margin:0 0 8px;font-size:15px;line-height:1.6;"><a href="${origin}/health" style="color:#0f172a;font-weight:700;">${escapeHtml(origin)}/health</a></p>
             <p style="margin:0;font-size:15px;line-height:1.6;"><a href="${origin}/api/health" style="color:#0f172a;font-weight:700;">${escapeHtml(origin)}/api/health</a></p>
           </article>
-        </div>
-        <div style="display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:18px;padding:0 22px 28px;">
-          <section style="padding:22px;border-radius:28px;background:#fff;border:1px solid rgba(15,23,42,.08);">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
-              <div>
-                <p style="margin:0 0 8px;font:800 12px/1 Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#b45309;">API Endpoints</p>
-                <h2 style="margin:0;font-size:28px;line-height:1.1;color:#0f172a;">Available Backend Routes</h2>
-              </div>
-              ${renderStatusPill(`${apiEntries.length} routes`, "neutral")}
-            </div>
-            <div style="display:grid;gap:12px;max-height:720px;overflow:auto;padding-right:4px;">
-              ${endpointRows}
-            </div>
-          </section>
-          <section style="display:grid;gap:18px;">
-            <article style="padding:22px;border-radius:28px;background:linear-gradient(135deg,#0f172a,#172d46);color:#f8fafc;border:1px solid rgba(255,255,255,.08);">
-              <p style="margin:0 0 12px;font:800 12px/1 Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#fdba74;">Connect API</p>
-              <h2 style="margin:0 0 12px;font-size:30px;line-height:1.05;">How to connect</h2>
-              <p style="margin:0;font-size:15px;line-height:1.8;color:rgba(248,250,252,.82);">
-                Use <code style="color:#fff;">${escapeHtml(origin)}</code> as your backend base URL. Send JSON requests to the endpoint list and keep your auth token in the <code style="color:#fff;">Authorization</code> header when required.
-              </p>
-            </article>
-            <article style="padding:22px;border-radius:28px;background:#fff;border:1px solid rgba(15,23,42,.08);">
-              <p style="margin:0 0 12px;font:800 12px/1 Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#b45309;">Example Request</p>
-              <pre style="margin:0;padding:16px;border-radius:20px;background:#0f172a;color:#e2e8f0;overflow:auto;white-space:pre-wrap;font:500 12px/1.75 Consolas,monospace;">fetch("${escapeHtml(origin)}${escapeHtml(exampleEndpoint)}", {
-  method: "GET",
-  headers: {
-    "Content-Type": "application/json",
-    "Authorization": "Bearer YOUR_TOKEN"
-  }
-});</pre>
-            </article>
-            <article style="padding:22px;border-radius:28px;background:linear-gradient(135deg,#fff7ed,#ffffff);border:1px solid rgba(249,115,22,.14);">
-              <p style="margin:0 0 12px;font:800 12px/1 Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#b45309;">Instructions</p>
-              <p style="margin:0 0 10px;font-size:15px;line-height:1.75;color:#475569;">1. Copy the base URL from this page.</p>
-              <p style="margin:0 0 10px;font-size:15px;line-height:1.75;color:#475569;">2. Pick an endpoint from the list and use one of the shown HTTP methods.</p>
-              <p style="margin:0 0 10px;font-size:15px;line-height:1.75;color:#475569;">3. Send JSON in the request body for write operations like <code>POST</code>, <code>PUT</code>, or <code>PATCH</code>.</p>
-              <p style="margin:0;font-size:15px;line-height:1.75;color:#475569;">4. Sensitive database information is intentionally hidden from this public backend page.</p>
-            </article>
-          </section>
         </div>
       </section>
     </main>
@@ -697,7 +604,7 @@ async function handleNodeRequest(req, res) {
     }
 
     if (req.url === "/" || req.url === "/index.html") {
-      html(req, res, 200, await renderHomePage(req), requestId);
+      html(req, res, 200, renderHomePage(req), requestId);
       return;
     }
 
@@ -736,13 +643,16 @@ async function handleNodeRequest(req, res) {
 
     let response;
     try {
+      const prisma = getPrismaClient();
+      await prisma.$connect();
       response = await executeHandler();
     } catch (error) {
       if (!isRetryableDatabaseError(error)) {
         throw error;
       }
 
-      await resetPrismaClient();
+      const prisma = await resetPrismaClient();
+      await prisma.$connect();
       response = await executeHandler();
     }
 
