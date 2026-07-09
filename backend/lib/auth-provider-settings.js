@@ -41,7 +41,9 @@ function isMissingAuthProviderSettingsError(error) {
     error?.code === "P2021" ||
     message.includes("Collection not found") ||
     message.includes("auth_provider_settings") ||
-    message.includes("The table `auth_provider_settings` does not exist")
+    message.includes("AuthProviderSetting") ||
+    message.includes("The table `auth_provider_settings` does not exist") ||
+    message.includes("ns does not exist")
   );
 }
 
@@ -78,10 +80,25 @@ function normalizeRecord(record) {
     return null;
   }
 
+  let clientSecret = "";
+  let botToken = "";
+
+  try {
+    clientSecret = record.clientSecret ? decryptSecret(record.clientSecret) : "";
+  } catch {
+    clientSecret = "";
+  }
+
+  try {
+    botToken = record.botToken ? decryptSecret(record.botToken) : "";
+  } catch {
+    botToken = "";
+  }
+
   return {
     ...record,
-    clientSecret: record.clientSecret ? decryptSecret(record.clientSecret) : "",
-    botToken: record.botToken ? decryptSecret(record.botToken) : "",
+    clientSecret,
+    botToken,
     scopes: record.scopes || DEFAULT_SCOPES[record.provider] || "",
   };
 }

@@ -45,10 +45,15 @@ function mergeSettings(record) {
 }
 
 function isMissingSiteSettingsTableError(error) {
+  const message = String(error?.message || "");
+
   return (
     error?.code === "P2021" ||
-    error?.message?.includes('The table `site_settings` does not exist in the current database.') ||
-    error?.message?.includes("Collection not found")
+    message.includes('The table `site_settings` does not exist in the current database.') ||
+    message.includes("Collection not found") ||
+    message.includes("site_settings") ||
+    message.includes("SiteSetting") ||
+    message.includes("ns does not exist")
   );
 }
 
