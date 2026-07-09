@@ -1,10 +1,19 @@
 import { prisma } from "../../../../lib/prisma.js";
+import { isMissingTableError } from "../../../../lib/prisma-errors.js";
 
 export async function GET() {
-  const items = await prisma.currency.findMany({
-    where: { isActive: true },
-    orderBy: { code: "asc" },
-  });
+  try {
+    const items = await prisma.currency.findMany({
+      where: { isActive: true },
+      orderBy: { code: "asc" },
+    });
 
-  return Response.json({ items });
+    return Response.json({ items });
+  } catch (error) {
+    if (isMissingTableError(error)) {
+      return Response.json({ items: [] });
+    }
+
+    throw error;
+  }
 }
