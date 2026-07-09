@@ -1,195 +1,574 @@
+const fs = require("fs");
+const path = require("path");
 const { ensureRuntimeEnv } = require("../config/runtime-env.cjs");
 const { PrismaClient } = require("@prisma/client");
-const axios = require("axios");
-const bcrypt = require("bcryptjs");
 
 ensureRuntimeEnv("backend");
 
 const prisma = new PrismaClient();
+const dumpPath = path.join(__dirname, "..", "smart_finance.sql");
 
-const CURRENCY_META = {
-  USD: { name: "US Dollar", symbol: "$" },
-  BDT: { name: "Bangladeshi Taka", symbol: "Tk" },
-  EUR: { name: "Euro", symbol: "EUR" },
-  RUB: { name: "Russian Ruble", symbol: "RUB" },
+const CLEAR_ORDER = [
+  "account",
+  "session",
+  "verificationToken",
+  "receipt",
+  "notification",
+  "groupMessage",
+  "financeGroupInvite",
+  "financeGroupMember",
+  "financeGroup",
+  "exportLog",
+  "aIInsight",
+  "savingsContribution",
+  "savingsGoal",
+  "debtPayment",
+  "debtLoan",
+  "recurringPayment",
+  "budget",
+  "transaction",
+  "wallet",
+  "category",
+  "userSetting",
+  "auditLog",
+  "authProviderSetting",
+  "customPage",
+  "siteSetting",
+  "user",
+  "currency",
+];
+
+const TABLE_CONFIG = {
+  accounts: {
+    delegate: "account",
+    transform: (record) =>
+      renameKeys(record, {
+        user_id: "userId",
+        provider_account_id: "providerAccountId",
+      }),
+  },
+  audit_logs: {
+    delegate: "auditLog",
+    transform: (record) =>
+      transformRecord(
+        renameKeys(record, {
+          actor_user_id: "actorUserId",
+          entity_type: "entityType",
+          entity_id: "entityId",
+          ip_address: "ipAddress",
+          created_at: "createdAt",
+        }),
+        {
+          json: ["meta"],
+          dates: ["createdAt"],
+        },
+      ),
+  },
+  auth_provider_settings: {
+    delegate: "authProviderSetting",
+    transform: (record) =>
+      transformRecord(
+        renameKeys(record, {
+          client_id: "clientId",
+          client_secret: "clientSecret",
+          bot_token: "botToken",
+          callback_url: "callbackUrl",
+          success_redirect_url: "successRedirectUrl",
+          failure_redirect_url: "failureRedirectUrl",
+          config_json: "configJson",
+          is_enabled: "isEnabled",
+          created_at: "createdAt",
+          updated_at: "updatedAt",
+        }),
+        {
+          booleans: ["isEnabled"],
+          json: ["configJson"],
+          dates: ["createdAt", "updatedAt"],
+        },
+      ),
+  },
+  Category: {
+    delegate: "category",
+    transform: (record) =>
+      transformRecord(
+        renameKeys(record, {
+          user_id: "userId",
+          is_default: "isDefault",
+          created_at: "createdAt",
+          updated_at: "updatedAt",
+        }),
+        {
+          booleans: ["isDefault"],
+          dates: ["createdAt", "updatedAt"],
+        },
+      ),
+  },
+  currencies: {
+    delegate: "currency",
+    transform: (record) =>
+      transformRecord(
+        renameKeys(record, {
+          exchange_rate_to_usd: "exchangeRateToUsd",
+          is_active: "isActive",
+          last_synced_at: "lastSyncedAt",
+          created_at: "createdAt",
+          updated_at: "updatedAt",
+        }),
+        {
+          booleans: ["isActive"],
+          numbers: ["exchangeRateToUsd"],
+          dates: ["lastSyncedAt", "createdAt", "updatedAt"],
+        },
+      ),
+  },
+  custom_pages: {
+    delegate: "customPage",
+    transform: (record) =>
+      transformRecord(
+        renameKeys(record, {
+          short_description: "shortDescription",
+          meta_title: "metaTitle",
+          meta_description: "metaDescription",
+          meta_keywords: "metaKeywords",
+          created_at: "createdAt",
+          updated_at: "updatedAt",
+          published_at: "publishedAt",
+        }),
+        {
+          dates: ["createdAt", "updatedAt", "publishedAt"],
+        },
+      ),
+  },
+  Notification: {
+    delegate: "notification",
+    transform: (record) =>
+      transformRecord(
+        renameKeys(record, {
+          user_id: "userId",
+          is_read: "isRead",
+          action_url: "actionUrl",
+          created_at: "createdAt",
+        }),
+        {
+          booleans: ["isRead"],
+          dates: ["createdAt"],
+        },
+      ),
+  },
+  site_settings: {
+    delegate: "siteSetting",
+    transform: (record) =>
+      transformRecord(
+        renameKeys(record, {
+          site_name: "siteName",
+          site_tagline: "siteTagline",
+          site_description: "siteDescription",
+          seo_title: "seoTitle",
+          seo_description: "seoDescription",
+          seo_keywords: "seoKeywords",
+          logo_url: "logoUrl",
+          icon_url: "iconUrl",
+          support_email: "supportEmail",
+          site_url: "siteUrl",
+          smtp_host: "smtpHost",
+          smtp_port: "smtpPort",
+          smtp_secure: "smtpSecure",
+          smtp_user: "smtpUser",
+          smtp_pass: "smtpPass",
+          smtp_from: "smtpFrom",
+          require_email_verification: "requireEmailVerification",
+          verification_code_expiry_minutes: "verificationCodeExpiryMinutes",
+          created_at: "createdAt",
+          updated_at: "updatedAt",
+        }),
+        {
+          booleans: ["smtpSecure", "requireEmailVerification"],
+          numbers: ["smtpPort", "verificationCodeExpiryMinutes"],
+          dates: ["createdAt", "updatedAt"],
+        },
+      ),
+  },
+  Transaction: {
+    delegate: "transaction",
+    transform: (record) =>
+      transformRecord(
+        renameKeys(record, {
+          user_id: "userId",
+          group_id: "groupId",
+          original_amount: "originalAmount",
+          converted_amount: "convertedAmount",
+          category_id: "categoryId",
+          wallet_id: "walletId",
+          transaction_date: "transactionDate",
+          payment_method: "paymentMethod",
+          attachment_url: "attachmentUrl",
+          currency_id: "currencyId",
+          exchange_rate: "exchangeRate",
+          income_source: "incomeSource",
+          created_at: "createdAt",
+          updated_at: "updatedAt",
+        }),
+        {
+          numbers: ["amount", "originalAmount", "convertedAmount", "exchangeRate"],
+          dates: ["transactionDate", "createdAt", "updatedAt"],
+        },
+      ),
+  },
+  users: {
+    delegate: "user",
+    transform: (record) =>
+      unsetNullFields(
+        transformRecord(
+          renameKeys(record, {
+            email_verified_at: "emailVerified",
+            created_at: "createdAt",
+            updated_at: "updatedAt",
+            registration_provider: "registrationProvider",
+            google_id: "googleId",
+            facebook_id: "facebookId",
+            telegram_id: "telegramId",
+            provider_meta: "providerMeta",
+            last_login_provider: "lastLoginProvider",
+            last_login_at: "lastLoginAt",
+            login_count: "loginCount",
+          }),
+          {
+            json: ["providerMeta"],
+            numbers: ["loginCount"],
+            dates: ["emailVerified", "createdAt", "updatedAt", "lastLoginAt"],
+          },
+        ),
+        ["email", "googleId", "facebookId", "telegramId"],
+      ),
+  },
+  UserSetting: {
+    delegate: "userSetting",
+    transform: (record) =>
+      transformRecord(
+        renameKeys(record, {
+          user_id: "userId",
+          email_notifications: "emailNotifications",
+          budget_alerts: "budgetAlerts",
+          bill_reminders: "billReminders",
+          low_balance_warnings: "lowBalanceWarnings",
+          created_at: "createdAt",
+          updated_at: "updatedAt",
+        }),
+        {
+          booleans: ["emailNotifications", "budgetAlerts", "billReminders", "lowBalanceWarnings"],
+          dates: ["createdAt", "updatedAt"],
+        },
+      ),
+  },
+  verification_tokens: {
+    delegate: "verificationToken",
+    transform: (record) =>
+      transformRecord(record, {
+        dates: ["expires"],
+      }),
+  },
+  Wallet: {
+    delegate: "wallet",
+    transform: (record) =>
+      transformRecord(
+        renameKeys(record, {
+          user_id: "userId",
+          currency_id: "currencyId",
+          is_default: "isDefault",
+          created_at: "createdAt",
+          updated_at: "updatedAt",
+        }),
+        {
+          booleans: ["isDefault"],
+          numbers: ["balance"],
+          dates: ["createdAt", "updatedAt"],
+        },
+      ),
+  },
 };
 
-function isValidEmail(value) {
-  if (!value) {
-    return false;
+function renameKeys(record, mapping) {
+  const next = {};
+
+  for (const [key, value] of Object.entries(record)) {
+    next[mapping[key] || key] = value;
   }
 
-  return /^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$/.test(String(value));
+  return next;
 }
 
-async function syncCurrenciesFromApi() {
-  const apiKey = process.env.EXCHANGE_RATE_API_KEY;
-  const baseUrl = process.env.EXCHANGE_RATE_BASE_URL;
-  if (!apiKey || !baseUrl) {
-    throw new Error("Currency sync is not configured");
+function transformRecord(record, config = {}) {
+  const next = { ...record };
+
+  for (const key of config.booleans || []) {
+    next[key] = next[key] == null ? null : Boolean(next[key]);
   }
 
-  const response = await axios.get(`${baseUrl}/${apiKey}/latest/USD`, {
-    timeout: 15000,
+  for (const key of config.numbers || []) {
+    next[key] = next[key] == null ? null : Number(next[key]);
+  }
+
+  for (const key of config.json || []) {
+    next[key] = parseJsonValue(next[key]);
+  }
+
+  for (const key of config.dates || []) {
+    next[key] = parseDateValue(next[key]);
+  }
+
+  return next;
+}
+
+function unsetNullFields(record, fields) {
+  const next = { ...record };
+
+  for (const field of fields) {
+    if (next[field] == null) {
+      delete next[field];
+    }
+  }
+
+  return next;
+}
+
+function parseJsonValue(value) {
+  if (value == null || value === "") {
+    return null;
+  }
+
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === "null") {
+    return null;
+  }
+
+  return JSON.parse(trimmed);
+}
+
+function parseDateValue(value) {
+  if (value == null || value === "") {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return value;
+  }
+
+  const normalized = String(value).replace(" ", "T");
+  const isoValue = /Z$/i.test(normalized) ? normalized : `${normalized}Z`;
+  return new Date(isoValue);
+}
+
+function decodeSqlString(value) {
+  return value.replace(/\\(.)/g, (_match, char) => {
+    switch (char) {
+      case "0":
+        return "\0";
+      case "b":
+        return "\b";
+      case "n":
+        return "\n";
+      case "r":
+        return "\r";
+      case "t":
+        return "\t";
+      case "Z":
+        return "\u001a";
+      default:
+        return char;
+    }
   });
+}
 
-  const rates = response.data?.conversion_rates;
-  if (!rates) {
-    throw new Error("Exchange API response did not include conversion rates");
+function parseScalar(token) {
+  const trimmed = token.trim();
+
+  if (trimmed === "NULL") {
+    return null;
   }
 
-  for (const [code, rate] of Object.entries(rates)) {
-    const meta = CURRENCY_META[code] || { name: code, symbol: code };
-    await prisma.currency.upsert({
-      where: { code },
-      update: {
-        name: meta.name,
-        symbol: meta.symbol,
-        exchangeRateToUsd: Number(rate),
-        isActive: true,
-        lastSyncedAt: new Date(),
-      },
-      create: {
-        code,
-        name: meta.name,
-        symbol: meta.symbol,
-        exchangeRateToUsd: Number(rate),
-        isActive: true,
-        lastSyncedAt: new Date(),
-      },
+  if (trimmed.startsWith("'") && trimmed.endsWith("'")) {
+    return decodeSqlString(trimmed.slice(1, -1));
+  }
+
+  if (/^-?\d+(?:\.\d+)?$/.test(trimmed)) {
+    return Number(trimmed);
+  }
+
+  return trimmed;
+}
+
+function splitTupleValues(tuple) {
+  const values = [];
+  let current = "";
+  let inString = false;
+  let escaped = false;
+
+  for (let index = 0; index < tuple.length; index += 1) {
+    const char = tuple[index];
+
+    if (escaped) {
+      current += char;
+      escaped = false;
+      continue;
+    }
+
+    if (char === "\\") {
+      current += char;
+      escaped = true;
+      continue;
+    }
+
+    if (char === "'") {
+      inString = !inString;
+      current += char;
+      continue;
+    }
+
+    if (char === "," && !inString) {
+      values.push(parseScalar(current));
+      current = "";
+      continue;
+    }
+
+    current += char;
+  }
+
+  if (current) {
+    values.push(parseScalar(current));
+  }
+
+  return values;
+}
+
+function parseRows(block) {
+  const rows = [];
+  let current = "";
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let index = 0; index < block.length; index += 1) {
+    const char = block[index];
+
+    if (escaped) {
+      if (depth > 0) {
+        current += char;
+      }
+      escaped = false;
+      continue;
+    }
+
+    if (char === "\\") {
+      if (depth > 0) {
+        current += char;
+      }
+      escaped = true;
+      continue;
+    }
+
+    if (char === "'") {
+      inString = !inString;
+      if (depth > 0) {
+        current += char;
+      }
+      continue;
+    }
+
+    if (!inString && char === "(") {
+      if (depth === 0) {
+        current = "";
+      } else {
+        current += char;
+      }
+      depth += 1;
+      continue;
+    }
+
+    if (!inString && char === ")") {
+      depth -= 1;
+      if (depth === 0) {
+        rows.push(splitTupleValues(current));
+        current = "";
+      } else {
+        current += char;
+      }
+      continue;
+    }
+
+    if (depth > 0) {
+      current += char;
+    }
+  }
+
+  return rows;
+}
+
+function parseDump(sql) {
+  const statements = [];
+  const insertPattern = /INSERT INTO `([^`]+)` \(([^)]+)\) VALUES\s*([\s\S]*?);/g;
+  let match;
+
+  while ((match = insertPattern.exec(sql))) {
+    const [, tableName, columnsBlock, valuesBlock] = match;
+    const columns = [...columnsBlock.matchAll(/`([^`]+)`/g)].map((item) => item[1]);
+    const rows = parseRows(valuesBlock).map((values) => Object.fromEntries(columns.map((column, index) => [column, values[index]])));
+
+    statements.push({
+      tableName,
+      rows,
     });
   }
+
+  return statements;
 }
 
-async function ensureBaseCurrencies() {
-  const defaults = [
-    { code: "USD", name: "US Dollar", symbol: "$", exchangeRateToUsd: 1 },
-    { code: "BDT", name: "Bangladeshi Taka", symbol: "Tk", exchangeRateToUsd: 117.25 },
-    { code: "EUR", name: "Euro", symbol: "EUR", exchangeRateToUsd: 0.92 },
-    { code: "RUB", name: "Russian Ruble", symbol: "RUB", exchangeRateToUsd: 92.4 },
-  ];
-
-  for (const currency of defaults) {
-    await prisma.currency.upsert({
-      where: { code: currency.code },
-      update: {
-        ...currency,
-        isActive: true,
-        lastSyncedAt: new Date(),
-      },
-      create: {
-        ...currency,
-        isActive: true,
-        lastSyncedAt: new Date(),
-      },
-    });
+async function clearDatabase() {
+  for (const delegate of CLEAR_ORDER) {
+    await prisma[delegate].deleteMany();
   }
 }
 
-async function ensureAdminUser() {
-  const adminEmail = "smshagor.ru@gmail.com";
-  const adminPassword = "SmShagor1@1";
-  const defaultCurrency = await prisma.currency.findUnique({
-    where: { code: "USD" },
-    select: { id: true },
-  });
+async function importDump() {
+  if (!fs.existsSync(dumpPath)) {
+    throw new Error(`SQL dump not found at ${dumpPath}`);
+  }
 
-  const hashedPassword = await bcrypt.hash(adminPassword, 10);
+  const sql = fs.readFileSync(dumpPath, "utf8");
+  const statements = parseDump(sql);
+  let importedRows = 0;
 
-  await prisma.user.upsert({
-    where: { email: adminEmail },
-    update: {
-      name: "SM Shagor",
-      password: hashedPassword,
-      role: "admin",
-      emailVerified: new Date(),
-      defaultCurrencyId: defaultCurrency?.id || null,
-    },
-    create: {
-      name: "SM Shagor",
-      email: adminEmail,
-      password: hashedPassword,
-      role: "admin",
-      emailVerified: new Date(),
-      defaultCurrencyId: defaultCurrency?.id || null,
-    },
-  });
+  for (const statement of statements) {
+    const config = TABLE_CONFIG[statement.tableName];
+    if (!config || !statement.rows.length) {
+      continue;
+    }
+
+    for (const row of statement.rows) {
+      await prisma[config.delegate].create({
+        data: config.transform(row),
+      });
+      importedRows += 1;
+    }
+  }
+
+  return importedRows;
 }
 
 async function main() {
-  await ensureBaseCurrencies();
-  await ensureAdminUser();
-  await prisma.$executeRaw`
-    INSERT INTO site_settings (
-      id,
-      site_name,
-      site_tagline,
-      site_description,
-      seo_title,
-      seo_description,
-      seo_keywords,
-      support_email,
-      site_url,
-      smtp_host,
-      smtp_port,
-      smtp_secure,
-      smtp_user,
-      smtp_pass,
-      smtp_from,
-      require_email_verification,
-      verification_code_expiry_minutes,
-      created_at,
-      updated_at
-    ) VALUES (
-      ${"global"},
-      ${"Finance Tracker"},
-      ${"Personal finance command center"},
-      ${"Personal finance tracker built with Next.js, Prisma, and MySQL"},
-      ${"Finance Tracker"},
-      ${"Personal finance tracker built with Next.js, Prisma, and MySQL"},
-      ${"finance tracker, budgeting, expenses, income, wallet, reports"},
-      ${isValidEmail(process.env.SMTP_USER) ? process.env.SMTP_USER : null},
-      ${process.env.APP_URL || "http://localhost:3001"},
-      ${process.env.SMTP_HOST || null},
-      ${Number(process.env.SMTP_PORT || 587)},
-      ${process.env.SMTP_SECURE === "true"},
-      ${process.env.SMTP_USER || null},
-      ${process.env.SMTP_PASS || null},
-      ${process.env.SMTP_FROM || null},
-      ${true},
-      ${15},
-      NOW(),
-      NOW()
-    )
-    ON DUPLICATE KEY UPDATE
-      site_name = VALUES(site_name),
-      site_tagline = VALUES(site_tagline),
-      site_description = VALUES(site_description),
-      seo_title = VALUES(seo_title),
-      seo_description = VALUES(seo_description),
-      seo_keywords = VALUES(seo_keywords),
-      support_email = VALUES(support_email),
-      site_url = VALUES(site_url),
-      smtp_host = VALUES(smtp_host),
-      smtp_port = VALUES(smtp_port),
-      smtp_secure = VALUES(smtp_secure),
-      smtp_user = VALUES(smtp_user),
-      smtp_pass = VALUES(smtp_pass),
-      smtp_from = VALUES(smtp_from),
-      require_email_verification = VALUES(require_email_verification),
-      verification_code_expiry_minutes = VALUES(verification_code_expiry_minutes),
-      updated_at = NOW()
-  `;
+  await prisma.$connect();
+  await prisma.$runCommandRaw({ ping: 1 });
 
-  try {
-    await syncCurrenciesFromApi();
-    console.log("Currency sync finished.");
-  } catch (error) {
-    console.warn(`Currency sync skipped: ${error.message}`);
-  }
+  console.log("Clearing MongoDB collections...");
+  await clearDatabase();
 
-  console.log("Seed complete");
-  console.log("Admin seeded: smshagor.ru@gmail.com");
+  console.log(`Importing SQL dump from ${dumpPath}...`);
+  const importedRows = await importDump();
+
+  console.log(`Seed complete. Imported ${importedRows} rows from smart_finance.sql.`);
 }
 
 main()

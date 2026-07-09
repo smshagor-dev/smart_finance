@@ -116,6 +116,21 @@ function buildDatabaseUrl() {
   }
 
   const protocol = process.env.DB_PROTOCOL || "mysql";
+  if (protocol.startsWith("mongodb")) {
+    const host = process.env.DB_HOST || "127.0.0.1";
+    const dbName = process.env.DB_NAME || "finance_tracker";
+    const username = process.env.DB_USER || "";
+    const password = process.env.DB_PASSWORD || "";
+    const auth = username ? `${encodeSegment(username)}:${encodeSegment(password)}@` : "";
+
+    if (protocol === "mongodb+srv") {
+      return `${protocol}://${auth}${host}/${dbName}`;
+    }
+
+    const port = process.env.DB_PORT || "27017";
+    return `${protocol}://${auth}${host}:${port}/${dbName}`;
+  }
+
   const host = process.env.DB_HOST || "127.0.0.1";
   const port = process.env.DB_PORT || "3306";
   const dbName = process.env.DB_NAME || "finance_tracker";
@@ -158,7 +173,7 @@ function normalizeOrigin(value) {
 
 function normalizeListenHost(value, fallback = "0.0.0.0") {
   const host = String(value || fallback).trim();
-  return host.toLowerCase() === "localhost" ? "127.0.0.1" : host || fallback;
+  return host || fallback;
 }
 
 function getAllowedOrigins() {
@@ -217,6 +232,19 @@ function validateProductionUrl(name, value) {
 }
 
 function validateDatabaseEnv() {
+  const databaseUrl = String(process.env.DATABASE_URL || "").trim();
+  if (databaseUrl) {
+    try {
+      const parsed = new URL(databaseUrl);
+      if (!["mongodb:", "mongodb+srv:", "mysql:"].includes(parsed.protocol)) {
+        throw new Error("unsupported protocol");
+      }
+      return;
+    } catch {
+      throw new Error("DATABASE_URL must be a valid MySQL or MongoDB connection string");
+    }
+  }
+
   const requiredDatabaseVars = ["DB_HOST", "DB_PORT", "DB_NAME", "DB_USER"];
   for (const name of requiredDatabaseVars) {
     if (!String(process.env[name] || "").trim()) {
@@ -298,6 +326,24 @@ function validateFrontendEnv() {
 }
 
 function getDatabaseConfig() {
+  const url = buildDatabaseUrl();
+
+  try {
+    const parsed = new URL(url);
+    const isMongoSrv = parsed.protocol === "mongodb+srv:";
+    return {
+      protocol: parsed.protocol.replace(":", ""),
+      host: parsed.hostname || process.env.DB_HOST || "127.0.0.1",
+      port: parsed.port ? Number(parsed.port) : isMongoSrv ? 0 : Number(process.env.DB_PORT || 3306),
+      name: parsed.pathname.replace(/^\//, "") || process.env.DB_NAME || "finance_tracker",
+      user: decodeURIComponent(parsed.username || process.env.DB_USER || ""),
+      password: decodeURIComponent(parsed.password || process.env.DB_PASSWORD || ""),
+      url,
+    };
+  } catch {
+    // Fall back to decomposed settings for partially configured local environments.
+  }
+
   return {
     protocol: process.env.DB_PROTOCOL || "mysql",
     host: process.env.DB_HOST || "127.0.0.1",
@@ -305,7 +351,7 @@ function getDatabaseConfig() {
     name: process.env.DB_NAME || "finance_tracker",
     user: process.env.DB_USER || "",
     password: process.env.DB_PASSWORD || "",
-    url: buildDatabaseUrl(),
+    url,
   };
 }
 

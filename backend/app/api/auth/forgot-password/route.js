@@ -7,7 +7,7 @@ import { createErrorResponse } from "../../../../lib/http-error.js";
 export async function POST(request) {
   try {
     const payload = forgotPasswordSchema.parse(await request.json());
-    const user = await prisma.user.findUnique({ where: { email: payload.email } });
+    const user = await prisma.user.findFirst({ where: { email: payload.email } });
 
     if (user?.email) {
       await prisma.verificationToken.create({

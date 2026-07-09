@@ -4,8 +4,9 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider     = "mongodb"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
 }
 
 enum UserRole {
@@ -108,17 +109,17 @@ enum PageStatus {
 }
 
 model User {
-  id                   String                @id @default(cuid())
+  id                   String @id @default(cuid()) @map("_id")
   name                 String?
-  email                String?               @unique
+  email                String?
   password             String?
   image                String?
   avatar               String?               @map("avatar")
   role                 UserRole              @default(user)
   registrationProvider AuthProvider          @default(email) @map("registration_provider")
-  googleId             String?               @unique @map("google_id")
-  facebookId           String?               @unique @map("facebook_id")
-  telegramId           String?               @unique @map("telegram_id")
+  googleId             String?               @map("google_id")
+  facebookId           String?               @map("facebook_id")
+  telegramId           String?               @map("telegram_id")
   emailVerified        DateTime?             @map("email_verified_at")
   providerMeta         Json?                 @map("provider_meta")
   lastLoginProvider    AuthProvider?         @map("last_login_provider")
@@ -157,20 +158,20 @@ model User {
 }
 
 model Account {
-  id                String  @id @default(cuid())
+  id                String @id @default(cuid()) @map("_id")
   userId            String  @map("user_id")
   type              String
   provider          String
   providerAccountId String  @map("provider_account_id")
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-  oauth_token_secret String? @db.Text
-  oauth_token       String? @db.Text
+  oauth_token_secret String?
+  oauth_token       String?
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
@@ -179,7 +180,7 @@ model Account {
 }
 
 model Session {
-  id           String   @id @default(cuid())
+  id           String @id @default(cuid()) @map("_id")
   sessionToken String   @unique @map("session_token")
   userId       String   @map("user_id")
   expires      DateTime
@@ -190,6 +191,7 @@ model Session {
 }
 
 model VerificationToken {
+  id         String   @id @default(cuid()) @map("_id")
   identifier String
   token      String   @unique
   expires    DateTime
@@ -199,11 +201,11 @@ model VerificationToken {
 }
 
 model Wallet {
-  id                String        @id @default(cuid())
+  id                String @id @default(cuid()) @map("_id")
   userId            String        @map("user_id")
   name              String
   type              String
-  balance           Decimal       @db.Decimal(14, 2)
+  balance           Float      
   currencyId        String?       @map("currency_id")
   icon              String?
   color             String?
@@ -221,7 +223,7 @@ model Wallet {
 }
 
 model Category {
-  id                String             @id @default(cuid())
+  id                String @id @default(cuid()) @map("_id")
   userId            String?            @map("user_id")
   name              String
   type              CategoryType
@@ -239,21 +241,21 @@ model Category {
 }
 
 model Transaction {
-  id              String          @id @default(cuid())
+  id              String @id @default(cuid()) @map("_id")
   userId          String          @map("user_id")
   groupId         String?         @map("group_id")
   type            TransactionType
-  amount          Decimal         @db.Decimal(14, 2)
-  originalAmount  Decimal         @db.Decimal(14, 2) @map("original_amount")
-  convertedAmount Decimal         @db.Decimal(14, 2) @map("converted_amount")
+  amount          Float        
+  originalAmount  Float         @map("original_amount")
+  convertedAmount Float         @map("converted_amount")
   categoryId      String?         @map("category_id")
   walletId        String          @map("wallet_id")
-  note            String?         @db.Text
+  note            String?        
   transactionDate DateTime        @map("transaction_date")
   paymentMethod   String?         @map("payment_method")
   attachmentUrl   String?         @map("attachment_url")
   currencyId      String?         @map("currency_id")
-  exchangeRate    Decimal?        @db.Decimal(14, 6) @map("exchange_rate")
+  exchangeRate    Float?        @map("exchange_rate")
   incomeSource    String?         @map("income_source")
   createdAt       DateTime        @default(now()) @map("created_at")
   updatedAt       DateTime        @updatedAt @map("updated_at")
@@ -270,11 +272,11 @@ model Transaction {
 }
 
 model Budget {
-  id         String       @id @default(cuid())
+  id         String @id @default(cuid()) @map("_id")
   userId     String       @map("user_id")
   categoryId String?      @map("category_id")
   walletId   String?      @map("wallet_id")
-  amount     Decimal      @db.Decimal(14, 2)
+  amount     Float     
   month      Int
   year       Int
   startDate  DateTime     @map("start_date")
@@ -290,16 +292,16 @@ model Budget {
 }
 
 model SavingsGoal {
-  id            String                @id @default(cuid())
+  id            String @id @default(cuid()) @map("_id")
   userId        String                @map("user_id")
   title         String
-  targetAmount  Decimal               @db.Decimal(14, 2) @map("target_amount")
-  currentAmount Decimal               @default(0) @db.Decimal(14, 2) @map("current_amount")
+  targetAmount  Float               @map("target_amount")
+  currentAmount Float               @default(0) @map("current_amount")
   deadline      DateTime?
   status        GoalStatus            @default(active)
   icon          String?
   color         String?
-  note          String?               @db.Text
+  note          String?              
   createdAt     DateTime              @default(now()) @map("created_at")
   updatedAt     DateTime              @updatedAt @map("updated_at")
   user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -309,10 +311,10 @@ model SavingsGoal {
 }
 
 model SavingsContribution {
-  id               String      @id @default(cuid())
+  id               String @id @default(cuid()) @map("_id")
   userId           String      @map("user_id")
   savingsGoalId    String      @map("savings_goal_id")
-  amount           Decimal     @db.Decimal(14, 2)
+  amount           Float    
   note             String?
   contributionDate DateTime    @default(now()) @map("contribution_date")
   createdAt        DateTime    @default(now()) @map("created_at")
@@ -323,11 +325,11 @@ model SavingsContribution {
 }
 
 model RecurringPayment {
-  id          String             @id @default(cuid())
+  id          String @id @default(cuid()) @map("_id")
   userId      String             @map("user_id")
   title       String
   type        TransactionType
-  amount      Decimal            @db.Decimal(14, 2)
+  amount      Float           
   categoryId  String?            @map("category_id")
   walletId    String?            @map("wallet_id")
   frequency   RecurringFrequency
@@ -346,15 +348,15 @@ model RecurringPayment {
 }
 
 model DebtLoan {
-  id         String        @id @default(cuid())
+  id         String @id @default(cuid()) @map("_id")
   userId     String        @map("user_id")
   personName String        @map("person_name")
   type       DebtType
-  amount     Decimal       @db.Decimal(14, 2)
-  paidAmount Decimal       @default(0) @db.Decimal(14, 2) @map("paid_amount")
+  amount     Float      
+  paidAmount Float       @default(0) @map("paid_amount")
   dueDate    DateTime?     @map("due_date")
   status     PaymentStatus @default(unpaid)
-  note       String?       @db.Text
+  note       String?      
   createdAt  DateTime      @default(now()) @map("created_at")
   updatedAt  DateTime      @updatedAt @map("updated_at")
   user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -364,10 +366,10 @@ model DebtLoan {
 }
 
 model DebtPayment {
-  id          String   @id @default(cuid())
+  id          String @id @default(cuid()) @map("_id")
   userId      String   @map("user_id")
   debtLoanId  String   @map("debt_loan_id")
-  amount      Decimal  @db.Decimal(14, 2)
+  amount      Float 
   note        String?
   paymentDate DateTime @default(now()) @map("payment_date")
   createdAt   DateTime @default(now()) @map("created_at")
@@ -378,10 +380,10 @@ model DebtPayment {
 }
 
 model Notification {
-  id        String           @id @default(cuid())
+  id        String @id @default(cuid()) @map("_id")
   userId    String           @map("user_id")
   title     String
-  message   String           @db.Text
+  message   String          
   type      NotificationType
   isRead    Boolean          @default(false) @map("is_read")
   actionUrl String?          @map("action_url")
@@ -392,7 +394,7 @@ model Notification {
 }
 
 model UserSetting {
-  id                 String   @id @default(cuid())
+  id                 String @id @default(cuid()) @map("_id")
   userId             String   @unique @map("user_id")
   language           String   @default("en")
   theme              String   @default("light")
@@ -407,11 +409,11 @@ model UserSetting {
 }
 
 model AIInsight {
-  id          String          @id @default(cuid())
+  id          String @id @default(cuid()) @map("_id")
   userId      String          @map("user_id")
   insightType String          @map("insight_type")
   title       String
-  description String          @db.Text
+  description String         
   severity    InsightSeverity @default(info)
   generatedAt DateTime        @default(now()) @map("generated_at")
   user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -420,7 +422,7 @@ model AIInsight {
 }
 
 model Receipt {
-  id           String       @id @default(cuid())
+  id           String @id @default(cuid()) @map("_id")
   userId       String       @map("user_id")
   transactionId String?     @map("transaction_id")
   fileUrl      String       @map("file_url")
@@ -434,11 +436,11 @@ model Receipt {
 }
 
 model Currency {
-  id                String        @id @default(cuid())
+  id                String @id @default(cuid()) @map("_id")
   code              String        @unique
   name              String?
   symbol            String?
-  exchangeRateToUsd Decimal       @default(1) @db.Decimal(14, 6) @map("exchange_rate_to_usd")
+  exchangeRateToUsd Float       @default(1) @map("exchange_rate_to_usd")
   isActive          Boolean       @default(true) @map("is_active")
   lastSyncedAt      DateTime?     @map("last_synced_at")
   createdAt         DateTime      @default(now()) @map("created_at")
@@ -451,10 +453,10 @@ model Currency {
 }
 
 model FinanceGroup {
-  id           String               @id @default(cuid())
+  id           String @id @default(cuid()) @map("_id")
   ownerId      String               @map("owner_id")
   name         String
-  description  String?              @db.Text
+  description  String?             
   createdAt    DateTime             @default(now()) @map("created_at")
   updatedAt    DateTime             @updatedAt @map("updated_at")
   owner        User                 @relation("FinanceGroupOwner", fields: [ownerId], references: [id], onDelete: Cascade)
@@ -467,7 +469,7 @@ model FinanceGroup {
 }
 
 model FinanceGroupMember {
-  id        String           @id @default(cuid())
+  id        String @id @default(cuid()) @map("_id")
   groupId   String           @map("group_id")
   userId    String           @map("user_id")
   role      GroupRole        @default(member)
@@ -480,7 +482,7 @@ model FinanceGroupMember {
 }
 
 model FinanceGroupInvite {
-  id         String       @id @default(cuid())
+  id         String @id @default(cuid()) @map("_id")
   groupId     String      @map("group_id")
   token      String       @unique
   createdById String      @map("created_by_id")
@@ -498,10 +500,10 @@ model FinanceGroupInvite {
 }
 
 model GroupMessage {
-  id        String       @id @default(cuid())
+  id        String @id @default(cuid()) @map("_id")
   groupId   String       @map("group_id")
   userId    String       @map("user_id")
-  body      String       @db.Text
+  body      String      
   createdAt DateTime     @default(now()) @map("created_at")
   updatedAt DateTime     @updatedAt @map("updated_at")
   group     FinanceGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
@@ -512,7 +514,7 @@ model GroupMessage {
 }
 
 model ExportLog {
-  id        String   @id @default(cuid())
+  id        String @id @default(cuid()) @map("_id")
   userId    String   @map("user_id")
   format    String
   resource  String
@@ -523,13 +525,13 @@ model ExportLog {
 }
 
 model SiteSetting {
-  id                            String   @id @default("global")
+  id                            String   @id @default("global") @map("_id")
   siteName                      String   @default("Finance Tracker") @map("site_name")
   siteTagline                   String?  @map("site_tagline")
-  siteDescription               String   @db.Text @map("site_description")
+  siteDescription               String   @map("site_description")
   seoTitle                      String?  @map("seo_title")
-  seoDescription                String?  @db.Text @map("seo_description")
-  seoKeywords                   String?  @db.Text @map("seo_keywords")
+  seoDescription                String?  @map("seo_description")
+  seoKeywords                   String?  @map("seo_keywords")
   logoUrl                       String?  @map("logo_url")
   iconUrl                       String?  @map("icon_url")
   supportEmail                  String?  @map("support_email")
@@ -538,7 +540,7 @@ model SiteSetting {
   smtpPort                      Int      @default(587) @map("smtp_port")
   smtpSecure                    Boolean  @default(false) @map("smtp_secure")
   smtpUser                      String?  @map("smtp_user")
-  smtpPass                      String?  @db.Text @map("smtp_pass")
+  smtpPass                      String?  @map("smtp_pass")
   smtpFrom                      String?  @map("smtp_from")
   requireEmailVerification      Boolean  @default(true) @map("require_email_verification")
   verificationCodeExpiryMinutes Int      @default(15) @map("verification_code_expiry_minutes")
@@ -549,15 +551,15 @@ model SiteSetting {
 }
 
 model AuthProviderSetting {
-  id                 String             @id @default(cuid())
+  id                 String @id @default(cuid()) @map("_id")
   provider           SocialAuthProvider @unique
   clientId           String?            @map("client_id")
-  clientSecret       String?            @db.Text @map("client_secret")
-  botToken           String?            @db.Text @map("bot_token")
-  callbackUrl        String?            @db.Text @map("callback_url")
-  successRedirectUrl String?            @db.Text @map("success_redirect_url")
-  failureRedirectUrl String?            @db.Text @map("failure_redirect_url")
-  scopes             String?            @db.Text
+  clientSecret       String?            @map("client_secret")
+  botToken           String?            @map("bot_token")
+  callbackUrl        String?            @map("callback_url")
+  successRedirectUrl String?            @map("success_redirect_url")
+  failureRedirectUrl String?            @map("failure_redirect_url")
+  scopes             String?           
   configJson         Json?              @map("config_json")
   isEnabled          Boolean            @default(false) @map("is_enabled")
   createdAt          DateTime           @default(now()) @map("created_at")
@@ -567,12 +569,12 @@ model AuthProviderSetting {
 }
 
 model AuditLog {
-  id          String   @id @default(cuid())
+  id          String @id @default(cuid()) @map("_id")
   actorUserId String?  @map("actor_user_id")
   action      String
   entityType  String   @map("entity_type")
   entityId    String?  @map("entity_id")
-  description String?  @db.Text
+  description String? 
   ipAddress   String?  @map("ip_address")
   meta        Json?
   createdAt   DateTime @default(now()) @map("created_at")
@@ -585,14 +587,14 @@ model AuditLog {
 }
 
 model CustomPage {
-  id               String     @id @default(cuid())
+  id               String @id @default(cuid()) @map("_id")
   title            String
   slug             String     @unique
-  shortDescription String?    @db.Text @map("short_description")
-  content          String     @db.LongText
+  shortDescription String?    @map("short_description")
+  content          String    
   metaTitle        String?    @map("meta_title")
-  metaDescription  String?    @db.Text @map("meta_description")
-  metaKeywords     String?    @db.Text @map("meta_keywords")
+  metaDescription  String?    @map("meta_description")
+  metaKeywords     String?    @map("meta_keywords")
   status           PageStatus @default(draft)
   createdAt        DateTime   @default(now()) @map("created_at")
   updatedAt        DateTime   @updatedAt @map("updated_at")

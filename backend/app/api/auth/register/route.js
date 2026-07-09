@@ -12,7 +12,7 @@ export async function POST(request) {
   try {
     assertTrustedOrigin(request);
     const payload = registerSchema.parse(await request.json());
-    const exists = await prisma.user.findUnique({ where: { email: payload.email } });
+    const exists = await prisma.user.findFirst({ where: { email: payload.email } });
     if (exists) {
       return Response.json({ error: "Email is already registered" }, { status: 409 });
     }

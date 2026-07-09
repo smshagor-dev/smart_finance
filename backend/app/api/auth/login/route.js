@@ -11,7 +11,7 @@ export async function POST(request) {
     assertTrustedOrigin(request);
     const payload = loginSchema.parse(await request.json());
     const siteSettings = await getSiteSettings();
-    const user = await prisma.user.findUnique({
+    const user = await prisma.user.findFirst({
       where: { email: payload.email },
       include: { defaultCurrency: true },
     });

@@ -28,7 +28,7 @@ export async function POST(request) {
       return Response.json({ error: "No social provider is available for linking" }, { status: 400 });
     }
 
-    const existingUser = await prisma.user.findUnique({
+    const existingUser = await prisma.user.findFirst({
       where: { email },
       include: { defaultCurrency: true },
     });

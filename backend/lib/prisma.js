@@ -1,11 +1,10 @@
 import { PrismaClient } from "@prisma/client";
 import runtimeEnv from "../config/runtime-env.cjs";
 
-runtimeEnv.ensureRuntimeEnv("backend");
-
 const globalForPrisma = globalThis;
 
 function createPrismaClient() {
+  runtimeEnv.ensureRuntimeEnv("backend");
   return new PrismaClient({
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
@@ -22,6 +21,7 @@ function getStore() {
 }
 
 export function getPrismaClient() {
+  runtimeEnv.ensureRuntimeEnv("backend");
   return getStore().client;
 }
 

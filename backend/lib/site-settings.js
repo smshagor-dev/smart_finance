@@ -16,9 +16,9 @@ const DEFAULT_SITE_SETTINGS = {
   id: "global",
   siteName: "Finance Tracker",
   siteTagline: "Personal finance command center",
-  siteDescription: "Personal finance tracker built with Next.js, Prisma, and MySQL",
+  siteDescription: "Personal finance tracker built with Next.js, Prisma, and MongoDB",
   seoTitle: "Finance Tracker",
-  seoDescription: "Personal finance tracker built with Next.js, Prisma, and MySQL",
+  seoDescription: "Personal finance tracker built with Next.js, Prisma, and MongoDB",
   seoKeywords: "finance tracker, budgeting, expenses, income, wallet, reports",
   logoUrl: null,
   iconUrl: null,
@@ -47,7 +47,8 @@ function mergeSettings(record) {
 function isMissingSiteSettingsTableError(error) {
   return (
     error?.code === "P2021" ||
-    error?.message?.includes('The table `site_settings` does not exist in the current database.')
+    error?.message?.includes('The table `site_settings` does not exist in the current database.') ||
+    error?.message?.includes("Collection not found")
   );
 }
 
@@ -74,54 +75,15 @@ function normalizeSiteSettings(record) {
   };
 }
 
-async function hasSiteSettingsTable(client = prisma) {
+async function findSiteSettingsRecord(client = prisma) {
   if (isBuildPhase) {
-    return false;
+    return null;
   }
 
-  const [result] = await client.$queryRaw`
-    SELECT EXISTS (
-      SELECT 1
-      FROM information_schema.tables
-      WHERE table_schema = DATABASE()
-        AND table_name = 'site_settings'
-    ) AS tableExists
-  `;
-
-  return Boolean(result?.tableExists);
-}
-
-async function findSiteSettingsRecord(client = prisma) {
   try {
-    if (!(await hasSiteSettingsTable(client))) {
-      return null;
-    }
-
-    const [settings] = await client.$queryRaw`
-      SELECT
-        id,
-        site_name AS siteName,
-        site_tagline AS siteTagline,
-        site_description AS siteDescription,
-        seo_title AS seoTitle,
-        seo_description AS seoDescription,
-        seo_keywords AS seoKeywords,
-        logo_url AS logoUrl,
-        icon_url AS iconUrl,
-        support_email AS supportEmail,
-        site_url AS siteUrl,
-        smtp_host AS smtpHost,
-        smtp_port AS smtpPort,
-        smtp_secure AS smtpSecure,
-        smtp_user AS smtpUser,
-        smtp_pass AS smtpPass,
-        smtp_from AS smtpFrom,
-        require_email_verification AS requireEmailVerification,
-        verification_code_expiry_minutes AS verificationCodeExpiryMinutes
-      FROM site_settings
-      WHERE id = ${DEFAULT_SITE_SETTINGS.id}
-      LIMIT 1
-    `;
+    const settings = await client.siteSetting.findUnique({
+      where: { id: DEFAULT_SITE_SETTINGS.id },
+    });
 
     return normalizeSiteSettings(settings);
   } catch (error) {
@@ -136,75 +98,32 @@ async function findSiteSettingsRecord(client = prisma) {
 export async function saveSiteSettings(data, client = prisma) {
   const merged = mergeSettings({ ...data, id: "global" });
 
-  await client.$executeRaw`
-    INSERT INTO site_settings (
-      id,
-      site_name,
-      site_tagline,
-      site_description,
-      seo_title,
-      seo_description,
-      seo_keywords,
-      logo_url,
-      icon_url,
-      support_email,
-      site_url,
-      smtp_host,
-      smtp_port,
-      smtp_secure,
-      smtp_user,
-      smtp_pass,
-      smtp_from,
-      require_email_verification,
-      verification_code_expiry_minutes,
-      created_at,
-      updated_at
-    ) VALUES (
-      ${merged.id},
-      ${merged.siteName},
-      ${merged.siteTagline},
-      ${merged.siteDescription},
-      ${merged.seoTitle},
-      ${merged.seoDescription},
-      ${merged.seoKeywords},
-      ${merged.logoUrl},
-      ${merged.iconUrl},
-      ${merged.supportEmail},
-      ${merged.siteUrl},
-      ${merged.smtpHost},
-      ${merged.smtpPort},
-      ${merged.smtpSecure},
-      ${merged.smtpUser},
-      ${merged.smtpPass},
-      ${merged.smtpFrom},
-      ${merged.requireEmailVerification},
-      ${merged.verificationCodeExpiryMinutes},
-      NOW(),
-      NOW()
-    )
-    ON DUPLICATE KEY UPDATE
-      site_name = VALUES(site_name),
-      site_tagline = VALUES(site_tagline),
-      site_description = VALUES(site_description),
-      seo_title = VALUES(seo_title),
-      seo_description = VALUES(seo_description),
-      seo_keywords = VALUES(seo_keywords),
-      logo_url = VALUES(logo_url),
-      icon_url = VALUES(icon_url),
-      support_email = VALUES(support_email),
-      site_url = VALUES(site_url),
-      smtp_host = VALUES(smtp_host),
-      smtp_port = VALUES(smtp_port),
-      smtp_secure = VALUES(smtp_secure),
-      smtp_user = VALUES(smtp_user),
-      smtp_pass = VALUES(smtp_pass),
-      smtp_from = VALUES(smtp_from),
-      require_email_verification = VALUES(require_email_verification),
-      verification_code_expiry_minutes = VALUES(verification_code_expiry_minutes),
-      updated_at = NOW()
-  `;
+  const saved = await client.siteSetting.upsert({
+    where: { id: merged.id },
+    update: {
+      siteName: merged.siteName,
+      siteTagline: merged.siteTagline,
+      siteDescription: merged.siteDescription,
+      seoTitle: merged.seoTitle,
+      seoDescription: merged.seoDescription,
+      seoKeywords: merged.seoKeywords,
+      logoUrl: merged.logoUrl,
+      iconUrl: merged.iconUrl,
+      supportEmail: merged.supportEmail,
+      siteUrl: merged.siteUrl,
+      smtpHost: merged.smtpHost,
+      smtpPort: merged.smtpPort,
+      smtpSecure: merged.smtpSecure,
+      smtpUser: merged.smtpUser,
+      smtpPass: merged.smtpPass,
+      smtpFrom: merged.smtpFrom,
+      requireEmailVerification: merged.requireEmailVerification,
+      verificationCodeExpiryMinutes: merged.verificationCodeExpiryMinutes,
+    },
+    create: merged,
+  });
 
-  return merged;
+  return normalizeSiteSettings(saved);
 }
 
 export async function ensureSiteSettings() {

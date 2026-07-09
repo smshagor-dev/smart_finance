@@ -8,7 +8,7 @@ export async function POST(request) {
     const payload = await request.json();
     const emailInput = forgotPasswordSchema.parse({ email: payload.email });
     const purpose = payload.purpose || "signup";
-    const user = await prisma.user.findUnique({
+    const user = await prisma.user.findFirst({
       where: { email: emailInput.email },
     });
 

@@ -223,7 +223,7 @@ export async function findOrCreateSocialUser({
   }
 
   const existingByEmail = normalizedEmail
-    ? await prisma.user.findUnique({
+    ? await prisma.user.findFirst({
         where: { email: normalizedEmail },
         include: { defaultCurrency: true },
       })

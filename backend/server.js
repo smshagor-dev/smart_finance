@@ -9,15 +9,8 @@ import { getPrismaClient, isRetryableDatabaseError, resetPrismaClient } from "./
 import { runWithRequestContext } from "./lib/request-context.js";
 import { getUploadsRoot } from "./lib/uploads.js";
 
-runtimeEnv.ensureRuntimeEnv("backend");
-
-const serverConfig = runtimeEnv.getServerConfig();
-const host = serverConfig.host;
-const port = serverConfig.port;
-const apiRoot = path.join(runtimeEnv.backendRoot, "app", "api");
 const routeModuleCache = new Map();
 const rateLimitStore = new Map();
-const uploadsRoot = getUploadsRoot();
 const contentTypeByExtension = new Map([
   [".jpg", "image/jpeg"],
   [".jpeg", "image/jpeg"],
@@ -35,6 +28,28 @@ const contentTypeByExtension = new Map([
   [".xls", "application/vnd.ms-excel"],
   [".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
 ]);
+
+function getServerConfig() {
+  runtimeEnv.ensureRuntimeEnv("backend");
+  return runtimeEnv.getServerConfig();
+}
+
+function getHost() {
+  return getServerConfig().host;
+}
+
+function getPort() {
+  return getServerConfig().port;
+}
+
+function getApiRoot() {
+  return path.join(runtimeEnv.backendRoot, "app", "api");
+}
+
+function getUploadsRootPath() {
+  runtimeEnv.ensureRuntimeEnv("backend");
+  return getUploadsRoot();
+}
 
 function setSecurityHeaders(res) {
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -60,7 +75,7 @@ function isOriginAllowed(origin) {
     return true;
   }
 
-  return serverConfig.allowedOrigins.includes(origin);
+  return getServerConfig().allowedOrigins.includes(origin);
 }
 
 function setCorsHeaders(req, res) {
@@ -71,8 +86,8 @@ function setCorsHeaders(req, res) {
 
   if (origin && isOriginAllowed(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
-  } else if (!origin && serverConfig.allowedOrigins[0]) {
-    res.setHeader("Access-Control-Allow-Origin", serverConfig.allowedOrigins[0]);
+  } else if (!origin && getServerConfig().allowedOrigins[0]) {
+    res.setHeader("Access-Control-Allow-Origin", getServerConfig().allowedOrigins[0]);
   }
 
   res.setHeader("Access-Control-Allow-Credentials", "true");
@@ -94,7 +109,7 @@ function getRouteEntries(dir) {
       continue;
     }
 
-    const relativePath = path.relative(apiRoot, fullPath).replace(/\\/g, "/");
+    const relativePath = path.relative(getApiRoot(), fullPath).replace(/\\/g, "/");
     const apiPath = `/api/${relativePath.replace(/\/route\.js$/, "").replace(/(^|\/)\[(.+?)\]/g, (_, slash, segment) => `${slash}:${segment}`)}`;
     const segments = apiPath.split("/").filter(Boolean);
     const score = segments.reduce((total, segment) => total + (segment.startsWith(":") ? 1 : 10), 0);
@@ -109,12 +124,20 @@ function getRouteEntries(dir) {
   return entries.sort((a, b) => b.score - a.score);
 }
 
-const routes = getRouteEntries(apiRoot);
+let routesCache = null;
+
+function getRoutes() {
+  if (!routesCache) {
+    routesCache = getRouteEntries(getApiRoot());
+  }
+
+  return routesCache;
+}
 
 function matchRoute(pathname) {
   const requestSegments = pathname.split("/").filter(Boolean);
 
-  for (const route of routes) {
+  for (const route of getRoutes()) {
     const routeSegments = route.pattern.split("/").filter(Boolean);
     if (routeSegments.length !== requestSegments.length) {
       continue;
@@ -164,7 +187,7 @@ function createWebRequest(req) {
   req.on("aborted", () => controller.abort());
 
   const protocol = (req.headers["x-forwarded-proto"] || "http").toString().split(",")[0].trim() || "http";
-  const hostHeader = req.headers.host || `${host}:${port}`;
+  const hostHeader = req.headers.host || `${getHost()}:${getPort()}`;
   const url = `${protocol}://${hostHeader}${req.url || "/"}`;
   const init = {
     method: req.method,
@@ -226,12 +249,197 @@ function json(req, res, statusCode, payload, requestId) {
 function html(req, res, statusCode, markup, requestId) {
   setCorsHeaders(req, res);
   res.setHeader("X-Request-Id", requestId);
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+  );
   res.writeHead(statusCode, { "Content-Type": "text/html; charset=utf-8" });
   res.end(markup);
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function wantsHtmlResponse(req) {
+  const accept = String(req.headers.accept || "").toLowerCase();
+  return accept.includes("text/html");
+}
+
+function getRequestOriginDetails(req) {
+  const protocol = String(req.headers["x-forwarded-proto"] || "http").split(",")[0].trim() || "http";
+  const host = String(req.headers["x-forwarded-host"] || req.headers.host || "localhost").split(",")[0].trim() || "localhost";
+  return {
+    protocol,
+    host,
+    origin: `${protocol}://${host}`,
+  };
+}
+
+function renderStatusPill(label, tone = "neutral") {
+  const toneStyles = {
+    success: "background:rgba(22,163,74,.12);color:#166534;border-color:rgba(22,163,74,.18);",
+    danger: "background:rgba(220,38,38,.12);color:#991b1b;border-color:rgba(220,38,38,.18);",
+    neutral: "background:rgba(15,23,42,.06);color:#172033;border-color:rgba(15,23,42,.08);",
+  };
+
+  return `<span style="display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:999px;border:1px solid ${toneStyles[tone] || toneStyles.neutral}font:700 12px/1 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;">${escapeHtml(label)}</span>`;
+}
+
+async function getApiExplorerEntries() {
+  const routes = getRoutes();
+  const entries = await Promise.all(
+    routes.map(async (route) => {
+      const routeModule = await loadRouteModule(route.filePath);
+      const methods = ["GET", "POST", "PUT", "PATCH", "DELETE"].filter((method) => typeof routeModule[method] === "function");
+
+      return {
+        path: route.pattern,
+        methods: methods.length ? methods : ["GET"],
+      };
+    }),
+  );
+
+  entries.unshift({
+    path: "/api/health",
+    methods: ["GET"],
+  });
+
+  return entries.sort((a, b) => a.path.localeCompare(b.path));
+}
+
+function renderApiMethodBadge(method) {
+  const tones = {
+    GET: "background:#dcfce7;color:#166534;",
+    POST: "background:#dbeafe;color:#1d4ed8;",
+    PUT: "background:#ede9fe;color:#6d28d9;",
+    PATCH: "background:#fef3c7;color:#b45309;",
+    DELETE: "background:#fee2e2;color:#b91c1c;",
+  };
+
+  return `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:62px;padding:8px 10px;border-radius:999px;font:800 11px/1 Arial,sans-serif;letter-spacing:.08em;${tones[method] || "background:#e2e8f0;color:#334155;"}">${escapeHtml(method)}</span>`;
+}
+
+function renderEndpointRows(entries) {
+  return entries
+    .map(
+      (entry) => `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:14px 16px;border-radius:18px;background:#ffffff;border:1px solid rgba(15,23,42,.08);">
+        <div style="min-width:0;">
+          <p style="margin:0 0 6px;font:700 12px/1 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#b45309;">Endpoint</p>
+          <p style="margin:0;font:600 14px/1.6 Consolas,monospace;color:#0f172a;word-break:break-word;">${escapeHtml(entry.path)}</p>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;">
+          ${entry.methods.map((method) => renderApiMethodBadge(method)).join("")}
+        </div>
+      </div>`,
+    )
+    .join("");
+}
+
+async function renderHomePage(req) {
+  const { origin } = getRequestOriginDetails(req);
+  const serverConfig = getServerConfig();
+  const apiEntries = await getApiExplorerEntries();
+  const endpointRows = renderEndpointRows(apiEntries);
+  const exampleEndpoint = apiEntries.find((entry) => entry.path !== "/api/health")?.path || "/api/health";
+
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Smart Finance API</title>
+  </head>
+  <body style="margin:0;font-family:'Segoe UI',Arial,sans-serif;background:
+    radial-gradient(circle at top left,rgba(34,197,94,.18),transparent 24%),
+    radial-gradient(circle at top right,rgba(249,115,22,.18),transparent 28%),
+    linear-gradient(160deg,#07111f 0%,#10233a 48%,#f6f0e8 48%,#f7f4ee 100%);
+    color:#0f172a;">
+    <main style="max-width:1180px;margin:0 auto;padding:28px 18px 54px;">
+      <section style="overflow:hidden;border-radius:34px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.72);box-shadow:0 30px 90px rgba(2,8,23,.22);backdrop-filter:blur(12px);">
+        <div style="padding:34px 28px 22px;background:
+          linear-gradient(135deg,rgba(7,17,31,.94),rgba(16,35,58,.88)),
+          radial-gradient(circle at top right,rgba(34,197,94,.18),transparent 25%);color:#f8fafc;">
+          ${renderStatusPill("Backend Live", "success")}
+          <h1 style="margin:18px 0 10px;font-size:clamp(38px,7vw,78px);line-height:.92;letter-spacing:-.06em;">Smart Finance<br/>Control Surface</h1>
+          <p style="max-width:760px;margin:0;font-size:18px;line-height:1.75;color:rgba(248,250,252,.82);">
+            Your backend is online. This landing page gives you a quick operational snapshot and direct access to the visual health pages for browser checks and API monitoring.
+          </p>
+          <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:22px;">
+            <a href="${origin}/health" style="display:inline-flex;align-items:center;justify-content:center;padding:13px 18px;border-radius:16px;background:#f8fafc;color:#0f172a;text-decoration:none;font:700 14px/1 Arial,sans-serif;">Open Health Dashboard</a>
+            <a href="${origin}/api/health" style="display:inline-flex;align-items:center;justify-content:center;padding:13px 18px;border-radius:16px;border:1px solid rgba(248,250,252,.22);background:rgba(248,250,252,.08);color:#f8fafc;text-decoration:none;font:700 14px/1 Arial,sans-serif;">Open API Health Endpoint</a>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;padding:22px 22px 28px;">
+          <article style="padding:22px;border-radius:24px;background:#fff;border:1px solid rgba(15,23,42,.08);">
+            <p style="margin:0 0 12px;font:800 12px/1 Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#b45309;">Runtime</p>
+            <p style="margin:0;font-size:28px;line-height:1.12;color:#0f172a;">${process.env.VERCEL ? "Vercel" : "Node Server"}</p>
+            <p style="margin:12px 0 0;font-size:14px;line-height:1.7;color:#475569;">Serving from <code>${escapeHtml(origin)}</code></p>
+          </article>
+          <article style="padding:22px;border-radius:24px;background:#fff;border:1px solid rgba(15,23,42,.08);">
+            <p style="margin:0 0 12px;font:800 12px/1 Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#b45309;">Frontend Link</p>
+            <p style="margin:0;font-size:24px;line-height:1.25;color:#0f172a;">${escapeHtml(serverConfig.frontendUrl || "-")}</p>
+            <p style="margin:12px 0 0;font-size:14px;line-height:1.7;color:#475569;">Allowed origins are validated from runtime environment settings.</p>
+          </article>
+          <article style="padding:22px;border-radius:24px;background:linear-gradient(135deg,#fff7ed,#ffffff);border:1px solid rgba(249,115,22,.14);">
+            <p style="margin:0 0 12px;font:800 12px/1 Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#b45309;">Browser Checks</p>
+            <p style="margin:0 0 8px;font-size:15px;line-height:1.6;"><a href="${origin}/health" style="color:#0f172a;font-weight:700;">${escapeHtml(origin)}/health</a></p>
+            <p style="margin:0;font-size:15px;line-height:1.6;"><a href="${origin}/api/health" style="color:#0f172a;font-weight:700;">${escapeHtml(origin)}/api/health</a></p>
+          </article>
+        </div>
+        <div style="display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:18px;padding:0 22px 28px;">
+          <section style="padding:22px;border-radius:28px;background:#fff;border:1px solid rgba(15,23,42,.08);">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+              <div>
+                <p style="margin:0 0 8px;font:800 12px/1 Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#b45309;">API Endpoints</p>
+                <h2 style="margin:0;font-size:28px;line-height:1.1;color:#0f172a;">Available Backend Routes</h2>
+              </div>
+              ${renderStatusPill(`${apiEntries.length} routes`, "neutral")}
+            </div>
+            <div style="display:grid;gap:12px;max-height:720px;overflow:auto;padding-right:4px;">
+              ${endpointRows}
+            </div>
+          </section>
+          <section style="display:grid;gap:18px;">
+            <article style="padding:22px;border-radius:28px;background:linear-gradient(135deg,#0f172a,#172d46);color:#f8fafc;border:1px solid rgba(255,255,255,.08);">
+              <p style="margin:0 0 12px;font:800 12px/1 Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#fdba74;">Connect API</p>
+              <h2 style="margin:0 0 12px;font-size:30px;line-height:1.05;">How to connect</h2>
+              <p style="margin:0;font-size:15px;line-height:1.8;color:rgba(248,250,252,.82);">
+                Use <code style="color:#fff;">${escapeHtml(origin)}</code> as your backend base URL. Send JSON requests to the endpoint list and keep your auth token in the <code style="color:#fff;">Authorization</code> header when required.
+              </p>
+            </article>
+            <article style="padding:22px;border-radius:28px;background:#fff;border:1px solid rgba(15,23,42,.08);">
+              <p style="margin:0 0 12px;font:800 12px/1 Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#b45309;">Example Request</p>
+              <pre style="margin:0;padding:16px;border-radius:20px;background:#0f172a;color:#e2e8f0;overflow:auto;white-space:pre-wrap;font:500 12px/1.75 Consolas,monospace;">fetch("${escapeHtml(origin)}${escapeHtml(exampleEndpoint)}", {
+  method: "GET",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer YOUR_TOKEN"
+  }
+});</pre>
+            </article>
+            <article style="padding:22px;border-radius:28px;background:linear-gradient(135deg,#fff7ed,#ffffff);border:1px solid rgba(249,115,22,.14);">
+              <p style="margin:0 0 12px;font:800 12px/1 Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#b45309;">Instructions</p>
+              <p style="margin:0 0 10px;font-size:15px;line-height:1.75;color:#475569;">1. Copy the base URL from this page.</p>
+              <p style="margin:0 0 10px;font-size:15px;line-height:1.75;color:#475569;">2. Pick an endpoint from the list and use one of the shown HTTP methods.</p>
+              <p style="margin:0 0 10px;font-size:15px;line-height:1.75;color:#475569;">3. Send JSON in the request body for write operations like <code>POST</code>, <code>PUT</code>, or <code>PATCH</code>.</p>
+              <p style="margin:0;font-size:15px;line-height:1.75;color:#475569;">4. Sensitive database information is intentionally hidden from this public backend page.</p>
+            </article>
+          </section>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>`;
+}
+
 function getClientIp(req) {
-  if (serverConfig.trustProxy) {
+  if (getServerConfig().trustProxy) {
     const forwardedFor = String(req.headers["x-forwarded-for"] || "")
       .split(",")[0]
       .trim();
@@ -248,13 +456,13 @@ function getRateLimitBucket(req) {
   if ((req.url || "").startsWith("/api/auth/")) {
     return {
       key: `auth:${getClientIp(req)}`,
-      maxRequests: serverConfig.authRateLimitMaxRequests,
+      maxRequests: getServerConfig().authRateLimitMaxRequests,
     };
   }
 
   return {
     key: `general:${getClientIp(req)}`,
-    maxRequests: serverConfig.rateLimitMaxRequests,
+    maxRequests: getServerConfig().rateLimitMaxRequests,
   };
 }
 
@@ -266,7 +474,7 @@ function enforceRateLimit(req) {
   if (!entry || entry.resetAt <= now) {
     rateLimitStore.set(key, {
       count: 1,
-      resetAt: now + serverConfig.rateLimitWindowMs,
+      resetAt: now + getServerConfig().rateLimitWindowMs,
     });
     return null;
   }
@@ -290,12 +498,13 @@ function cleanupRateLimitStore() {
 
 function isRequestTooLarge(req) {
   const contentLength = Number(req.headers["content-length"] || 0);
-  return Number.isFinite(contentLength) && contentLength > serverConfig.requestSizeLimitBytes;
+  return Number.isFinite(contentLength) && contentLength > getServerConfig().requestSizeLimitBytes;
 }
 
 function getUploadsFilePath(pathname) {
   const relativePath = pathname.replace(/^\/uploads\//, "");
   const normalizedPath = path.normalize(relativePath).replace(/^(\.\.(\/|\\|$))+/, "");
+  const uploadsRoot = getUploadsRootPath();
   const targetPath = path.resolve(uploadsRoot, normalizedPath);
   const resolvedRoot = path.resolve(uploadsRoot);
 
@@ -342,13 +551,18 @@ async function handleUploadsRequest(req, res, pathname, requestId) {
 async function handleHealth(req, res, requestId) {
   const db = runtimeEnv.getDatabaseConfig();
   const prisma = getPrismaClient();
-  const wantsHtml = req.url === "/health";
+  const isApiHealth = req.url === "/api/health";
+  const { origin } = getRequestOriginDetails(req);
+  const wantsHtml = req.url === "/health" || (isApiHealth && wantsHtmlResponse(req));
 
   function renderHealthPage(payload) {
     const isOk = payload.status === "ok";
+    const accent = isOk ? "#16a34a" : "#dc2626";
+    const panelTone = isOk ? "rgba(22,163,74,.12)" : "rgba(220,38,38,.12)";
     const errorDetails = payload.database.error
-      ? `<pre style="margin:16px 0 0;padding:16px;border-radius:16px;background:#0f172a;color:#e2e8f0;overflow:auto;white-space:pre-wrap;">${payload.database.error}</pre>`
+      ? `<pre style="margin:16px 0 0;padding:16px;border-radius:18px;background:#0f172a;color:#e2e8f0;overflow:auto;white-space:pre-wrap;font:500 13px/1.7 Consolas,monospace;">${escapeHtml(payload.database.error)}</pre>`
       : "";
+    const endpointLabel = payload.endpoint === "/api/health" ? "API Health Endpoint" : "Health Dashboard";
 
     return `<!doctype html>
 <html lang="en">
@@ -357,19 +571,46 @@ async function handleHealth(req, res, requestId) {
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Backend Health</title>
   </head>
-  <body style="margin:0;background:#f8fafc;color:#0f172a;font-family:Segoe UI,Arial,sans-serif;">
-    <main style="max-width:760px;margin:40px auto;padding:24px;">
-      <section style="background:#fff;border:1px solid #e2e8f0;border-radius:24px;padding:24px;box-shadow:0 10px 30px rgba(15,23,42,.06);">
-        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-          <span style="display:inline-block;width:14px;height:14px;border-radius:999px;background:${isOk ? "#16a34a" : "#dc2626"};"></span>
-          <h1 style="margin:0;font-size:28px;">${payload.service}</h1>
+  <body style="margin:0;background:
+    radial-gradient(circle at top left,${panelTone},transparent 24%),
+    linear-gradient(180deg,#f8fafc 0%,#eef4f1 100%);
+    color:#0f172a;font-family:'Segoe UI',Arial,sans-serif;">
+    <main style="max-width:980px;margin:0 auto;padding:28px 18px 48px;">
+      <section style="overflow:hidden;border-radius:32px;border:1px solid rgba(15,23,42,.08);background:rgba(255,255,255,.88);box-shadow:0 26px 70px rgba(15,23,42,.12);">
+        <div style="padding:30px 26px 24px;background:
+          linear-gradient(135deg,#0f172a,#13263f),
+          radial-gradient(circle at top right,${panelTone},transparent 25%);color:#f8fafc;">
+          ${renderStatusPill(isOk ? "System Healthy" : "Attention Required", isOk ? "success" : "danger")}
+          <h1 style="margin:18px 0 10px;font-size:clamp(30px,6vw,56px);line-height:.96;letter-spacing:-.05em;">${escapeHtml(endpointLabel)}</h1>
+          <p style="max-width:680px;margin:0;font-size:17px;line-height:1.75;color:rgba(248,250,252,.82);">
+            Live status for <strong>${escapeHtml(payload.service)}</strong>. This page confirms backend reachability and the current database connection state.
+          </p>
         </div>
-        <p style="margin:12px 0 0;font-size:18px;">Status: <strong>${payload.status}</strong></p>
-        <p style="margin:8px 0 0;">Database: <strong>${payload.database.status}</strong></p>
-        <p style="margin:8px 0 0;">Host: <code>${payload.database.host}:${payload.database.port}</code></p>
-        <p style="margin:8px 0 0;">Database name: <code>${payload.database.name}</code></p>
-        <p style="margin:8px 0 0;">User: <code>${payload.database.user || "-"}</code></p>
-        <p style="margin:8px 0 0;">Checked at: <code>${payload.timestamp}</code></p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;padding:22px;">
+          <article style="padding:20px;border-radius:24px;background:#fff;border:1px solid rgba(15,23,42,.08);">
+            <p style="margin:0 0 10px;font:800 12px/1 Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#b45309;">Service Status</p>
+            <p style="margin:0;font-size:28px;line-height:1.1;color:${accent};text-transform:capitalize;">${escapeHtml(payload.status)}</p>
+            <p style="margin:10px 0 0;font-size:14px;line-height:1.7;color:#475569;">Endpoint: <code>${escapeHtml(payload.endpoint)}</code></p>
+          </article>
+          <article style="padding:20px;border-radius:24px;background:#fff;border:1px solid rgba(15,23,42,.08);">
+            <p style="margin:0 0 10px;font:800 12px/1 Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#b45309;">Database</p>
+            <p style="margin:0;font-size:28px;line-height:1.1;color:#0f172a;text-transform:capitalize;">${escapeHtml(payload.database.status)}</p>
+            <p style="margin:10px 0 0;font-size:14px;line-height:1.7;color:#475569;">Live database connectivity check result.</p>
+          </article>
+          <article style="padding:20px;border-radius:24px;background:linear-gradient(135deg,#eff6ff,#ffffff);border:1px solid rgba(59,130,246,.14);">
+            <p style="margin:0 0 10px;font:800 12px/1 Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#1d4ed8;">Checked At</p>
+            <p style="margin:0;font-size:18px;line-height:1.5;color:#0f172a;"><code>${escapeHtml(payload.timestamp)}</code></p>
+            <p style="margin:10px 0 0;font-size:14px;line-height:1.7;color:#475569;">Origin: <code>${escapeHtml(origin)}</code></p>
+          </article>
+        </div>
+        <div style="padding:0 22px 24px;">
+          <div style="padding:20px;border-radius:24px;background:#fff7ed;border:1px solid rgba(249,115,22,.14);">
+            <p style="margin:0 0 10px;font:800 12px/1 Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#c2410c;">Quick Links</p>
+            <p style="margin:0 0 8px;font-size:15px;line-height:1.6;"><a href="${origin}/" style="color:#0f172a;font-weight:700;">${escapeHtml(origin)}/</a></p>
+            <p style="margin:0 0 8px;font-size:15px;line-height:1.6;"><a href="${origin}/health" style="color:#0f172a;font-weight:700;">${escapeHtml(origin)}/health</a></p>
+            <p style="margin:0;font-size:15px;line-height:1.6;"><a href="${origin}/api/health" style="color:#0f172a;font-weight:700;">${escapeHtml(origin)}/api/health</a></p>
+          </div>
+        </div>
         ${errorDetails}
       </section>
     </main>
@@ -379,16 +620,17 @@ async function handleHealth(req, res, requestId) {
 
   try {
     await prisma.$connect();
-    await prisma.$queryRawUnsafe("SELECT 1");
+    if (db.protocol.startsWith("mongodb")) {
+      await prisma.$runCommandRaw({ ping: 1 });
+    } else {
+      await prisma.$queryRawUnsafe("SELECT 1");
+    }
     const payload = {
       service: "smart-finance-backend",
       status: "ok",
+      endpoint: isApiHealth ? "/api/health" : "/health",
       database: {
         status: "connected",
-        host: db.host,
-        port: db.port,
-        name: db.name,
-        user: db.user,
       },
       timestamp: new Date().toISOString(),
     };
@@ -403,12 +645,9 @@ async function handleHealth(req, res, requestId) {
     const payload = {
       service: "smart-finance-backend",
       status: "degraded",
+      endpoint: isApiHealth ? "/api/health" : "/health",
       database: {
         status: "disconnected",
-        host: db.host,
-        port: db.port,
-        name: db.name,
-        user: db.user,
         error: runtimeEnv.isProduction() ? "Database unavailable" : error.message,
       },
       timestamp: new Date().toISOString(),
@@ -423,7 +662,7 @@ async function handleHealth(req, res, requestId) {
   }
 }
 
-const server = http.createServer(async (req, res) => {
+async function handleNodeRequest(req, res) {
   const requestId = crypto.randomUUID();
 
   try {
@@ -454,6 +693,11 @@ const server = http.createServer(async (req, res) => {
 
     if (isRequestTooLarge(req)) {
       json(req, res, 413, { error: "Request body too large" }, requestId);
+      return;
+    }
+
+    if (req.url === "/" || req.url === "/index.html") {
+      html(req, res, 200, await renderHomePage(req), requestId);
       return;
     }
 
@@ -516,7 +760,14 @@ const server = http.createServer(async (req, res) => {
       requestId,
     );
   }
-});
+}
+
+export default handleNodeRequest;
+
+const server = http.createServer(handleNodeRequest);
+const serverConfig = getServerConfig();
+const host = process.env.VERCEL ? "0.0.0.0" : getHost();
+const port = Number(process.env.PORT || getPort());
 
 server.requestTimeout = serverConfig.requestTimeoutMs;
 server.headersTimeout = serverConfig.headersTimeoutMs;

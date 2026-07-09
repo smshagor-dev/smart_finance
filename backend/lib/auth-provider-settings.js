@@ -16,6 +16,35 @@ const PROVIDER_REQUIREMENTS = {
   telegram: ["botToken", "callbackUrl", "successRedirectUrl", "failureRedirectUrl"],
 };
 
+function createDefaultProviderSetting(provider) {
+  return {
+    id: "",
+    provider,
+    clientId: "",
+    clientSecret: "",
+    botToken: "",
+    callbackUrl: "",
+    successRedirectUrl: "",
+    failureRedirectUrl: "",
+    scopes: DEFAULT_SCOPES[provider] || "",
+    configJson: null,
+    isEnabled: false,
+    createdAt: null,
+    updatedAt: null,
+  };
+}
+
+function isMissingAuthProviderSettingsError(error) {
+  const message = String(error?.message || "");
+
+  return (
+    error?.code === "P2021" ||
+    message.includes("Collection not found") ||
+    message.includes("auth_provider_settings") ||
+    message.includes("The table `auth_provider_settings` does not exist")
+  );
+}
+
 function normalizeOrigin(value) {
   return String(value || "").trim().replace(/\/$/, "");
 }
@@ -118,25 +147,19 @@ export function toPublicProviderSetting(setting) {
 }
 
 export async function getAllAuthProviderSettings() {
-  const records = await prisma.authProviderSetting.findMany({
-    orderBy: { provider: "asc" },
-  });
+  let records = [];
 
-  return SOCIAL_AUTH_PROVIDERS.map((provider) => normalizeRecord(records.find((record) => record.provider === provider)) || {
-    id: "",
-    provider,
-    clientId: "",
-    clientSecret: "",
-    botToken: "",
-    callbackUrl: "",
-    successRedirectUrl: "",
-    failureRedirectUrl: "",
-    scopes: DEFAULT_SCOPES[provider] || "",
-    configJson: null,
-    isEnabled: false,
-    createdAt: null,
-    updatedAt: null,
-  });
+  try {
+    records = await prisma.authProviderSetting.findMany({
+      orderBy: { provider: "asc" },
+    });
+  } catch (error) {
+    if (!isMissingAuthProviderSettingsError(error)) {
+      throw error;
+    }
+  }
+
+  return SOCIAL_AUTH_PROVIDERS.map((provider) => normalizeRecord(records.find((record) => record.provider === provider)) || createDefaultProviderSetting(provider));
 }
 
 export async function getAuthProviderSetting(provider) {
@@ -144,11 +167,19 @@ export async function getAuthProviderSetting(provider) {
     throw new Error("Unsupported provider");
   }
 
-  const record = await prisma.authProviderSetting.findUnique({
-    where: { provider },
-  });
+  try {
+    const record = await prisma.authProviderSetting.findUnique({
+      where: { provider },
+    });
 
-  return normalizeRecord(record);
+    return normalizeRecord(record);
+  } catch (error) {
+    if (isMissingAuthProviderSettingsError(error)) {
+      return createDefaultProviderSetting(provider);
+    }
+
+    throw error;
+  }
 }
 
 export async function saveAuthProviderSetting(provider, payload) {

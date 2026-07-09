@@ -2,20 +2,24 @@
   "name": "smart-finance-backend",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "node --watch server.js",
     "build": "node scripts/run-prisma.cjs generate",
     "check:env": "node scripts/check-env.cjs",
     "start": "node scripts/check-env.cjs && node server.js",
-    "release": "npm run check:env && npm run db:migrate && npm run start",
-    "db:check": "node prisma/setup-legacy-mysql.cjs --check",
+    "release": "npm run check:env && npm run db:push && npm run start",
+    "db:check": "node prisma/setup-mongodb.cjs --check",
     "db:generate": "node scripts/run-prisma.cjs generate",
-    "db:migrate": "node scripts/run-prisma.cjs migrate deploy",
-    "db:migrate:dev": "node scripts/run-prisma.cjs migrate dev",
+    "db:migrate": "node scripts/run-prisma.cjs db push",
+    "db:migrate:dev": "node scripts/run-prisma.cjs db push",
     "db:push": "node scripts/run-prisma.cjs db push",
-    "db:legacy-setup": "node scripts/run-prisma.cjs generate && node prisma/setup-legacy-mysql.cjs",
+    "db:legacy-setup": "node scripts/run-prisma.cjs generate && node prisma/setup-mongodb.cjs",
     "db:seed": "node prisma/seed.cjs",
-    "db:setup": "node scripts/run-prisma.cjs generate && node prisma/setup-legacy-mysql.cjs && node prisma/seed.cjs"
+    "db:seed:sql": "node prisma/seed.cjs",
+    "db:setup": "node scripts/run-prisma.cjs generate && node prisma/setup-mongodb.cjs && node prisma/seed.cjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
