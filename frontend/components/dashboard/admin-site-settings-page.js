@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Upload } from "lucide-react";
+import { RefreshCw, Server, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
@@ -56,16 +56,20 @@ export function AdminSiteSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [savingSection, setSavingSection] = useState("");
   const [uploading, setUploading] = useState("");
+  const [storageStatus, setStorageStatus] = useState(null);
+  const [checkingStorage, setCheckingStorage] = useState(false);
   const toast = useToast();
 
   useEffect(() => {
     let active = true;
 
-    fetch("/api/admin/site-settings")
-      .then((response) => response.json())
-      .then((data) => {
+    Promise.all([
+      fetch("/api/admin/site-settings").then((response) => response.json()),
+      fetch("/api/admin/storage-status").then((response) => response.json()).catch(() => null),
+    ]).then(([data, status]) => {
         if (!active) return;
         setForm(normalizeForm(data));
+        setStorageStatus(status);
         setLoading(false);
       });
 
@@ -99,6 +103,21 @@ export function AdminSiteSettingsPage() {
     toast.push(`${purpose === "logo" ? "Logo" : "Icon"} uploaded`);
   }
 
+  async function pingStorage() {
+    setCheckingStorage(true);
+    const response = await fetch("/api/admin/storage-status");
+    const data = await response.json();
+    setCheckingStorage(false);
+    setStorageStatus(data);
+
+    if (!response.ok || data.error || data.connected === false) {
+      toast.push(data.error || "Storage ping failed", "error");
+      return;
+    }
+
+    toast.push(`Storage connected in ${data.pingMs}ms`);
+  }
+
   async function saveSection(section) {
     setSavingSection(section);
     const payload = Object.fromEntries(sectionFields[section].map((key) => [key, form[key]]));
@@ -126,6 +145,46 @@ export function AdminSiteSettingsPage() {
 
   return (
     <div className="space-y-6">
+      <Card className="p-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h3 className="text-xl font-semibold">File storage</h3>
+            <p className="mt-2 text-sm text-slate-500">Uploads are served through the backend from the configured storage driver.</p>
+          </div>
+          <Button type="button" variant="secondary" className="gap-2" disabled={checkingStorage} onClick={pingStorage}>
+            <RefreshCw className={`h-4 w-4 ${checkingStorage ? "animate-spin" : ""}`} />
+            {checkingStorage ? "Pinging..." : "Ping"}
+          </Button>
+        </div>
+        <div className="mt-6 grid gap-4 md:grid-cols-4">
+          <div className="rounded-2xl border border-border bg-white p-4">
+            <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
+              <Server className="h-4 w-4" />
+              Driver
+            </div>
+            <p className="mt-2 text-lg font-semibold uppercase">{storageStatus?.driver || "unknown"}</p>
+          </div>
+          <div className="rounded-2xl border border-border bg-white p-4">
+            <p className="text-sm font-medium text-slate-500">Status</p>
+            <p className={`mt-2 text-lg font-semibold ${storageStatus?.connected ? "text-emerald-600" : "text-red-600"}`}>
+              {storageStatus?.connected ? "Connected" : "Disconnected"}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-border bg-white p-4">
+            <p className="text-sm font-medium text-slate-500">Ping</p>
+            <p className="mt-2 text-lg font-semibold">{Number.isFinite(storageStatus?.pingMs) ? `${storageStatus.pingMs}ms` : "N/A"}</p>
+          </div>
+          <div className="rounded-2xl border border-border bg-white p-4">
+            <p className="text-sm font-medium text-slate-500">Target</p>
+            <p className="mt-2 truncate text-sm font-semibold" title={storageStatus?.host || storageStatus?.root || ""}>
+              {storageStatus?.driver === "ftp" ? `${storageStatus?.host || "not configured"}:${storageStatus?.port || 21}` : storageStatus?.root || "local"}
+            </p>
+          </div>
+        </div>
+        {storageStatus?.error ? <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{storageStatus.error}</p> : null}
+        {storageStatus?.checkedAt ? <p className="mt-3 text-xs text-slate-500">Last checked {new Date(storageStatus.checkedAt).toLocaleString()}</p> : null}
+      </Card>
+
       <Card className="p-6">
         <h3 className="text-xl font-semibold">Branding and SEO</h3>
         <div className="mt-6 grid gap-4 md:grid-cols-2">
