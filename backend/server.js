@@ -5,29 +5,13 @@ import path from "node:path";
 import { Readable } from "node:stream";
 import { pathToFileURL } from "node:url";
 import runtimeEnv from "./config/runtime-env.cjs";
+import { GENERATED_ROUTES } from "./lib/generated-route-manifest.js";
 import { getPrismaClient, isRetryableDatabaseError, resetPrismaClient } from "./lib/prisma.js";
 import { runWithRequestContext } from "./lib/request-context.js";
-import { getUploadsRoot } from "./lib/uploads.js";
+import { getUploadFileByPathname } from "./lib/uploads.js";
 
 const routeModuleCache = new Map();
 const rateLimitStore = new Map();
-const contentTypeByExtension = new Map([
-  [".jpg", "image/jpeg"],
-  [".jpeg", "image/jpeg"],
-  [".png", "image/png"],
-  [".webp", "image/webp"],
-  [".gif", "image/gif"],
-  [".svg", "image/svg+xml"],
-  [".ico", "image/x-icon"],
-  [".bmp", "image/bmp"],
-  [".tiff", "image/tiff"],
-  [".pdf", "application/pdf"],
-  [".txt", "text/plain; charset=utf-8"],
-  [".doc", "application/msword"],
-  [".docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
-  [".xls", "application/vnd.ms-excel"],
-  [".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
-]);
 
 function getServerConfig() {
   runtimeEnv.ensureRuntimeEnv("backend");
@@ -44,11 +28,6 @@ function getPort() {
 
 function getApiRoot() {
   return path.join(runtimeEnv.backendRoot, "app", "api");
-}
-
-function getUploadsRootPath() {
-  runtimeEnv.ensureRuntimeEnv("backend");
-  return getUploadsRoot();
 }
 
 function setSecurityHeaders(res) {
@@ -128,7 +107,10 @@ let routesCache = null;
 
 function getRoutes() {
   if (!routesCache) {
-    routesCache = getRouteEntries(getApiRoot());
+    // Prefer the generated manifest. It holds static imports, so the route modules
+    // are traced into the deployment bundle. Scanning app/api from disk only works
+    // when the source tree ships alongside the server, which it does not on Vercel.
+    routesCache = GENERATED_ROUTES.length ? GENERATED_ROUTES : getRouteEntries(getApiRoot());
   }
 
   return routesCache;
@@ -170,6 +152,25 @@ function matchRoute(pathname) {
 }
 
 async function loadRouteModule(filePath) {
+  // Manifest entries carry a repo-relative filePath and a statically imported module.
+  if (!path.isAbsolute(filePath)) {
+    const generatedRoute = GENERATED_ROUTES.find((route) => route.filePath === filePath);
+    if (generatedRoute?.module) {
+      return generatedRoute.module;
+    }
+
+    if (generatedRoute?.load) {
+      const cachedModule = routeModuleCache.get(filePath);
+      if (cachedModule) {
+        return cachedModule.module;
+      }
+
+      const loaded = await generatedRoute.load();
+      routeModuleCache.set(filePath, { module: loaded });
+      return loaded;
+    }
+  }
+
   const stat = fs.statSync(filePath);
   const cached = routeModuleCache.get(filePath);
 
@@ -408,46 +409,18 @@ function isRequestTooLarge(req) {
   return Number.isFinite(contentLength) && contentLength > getServerConfig().requestSizeLimitBytes;
 }
 
-function getUploadsFilePath(pathname) {
-  const relativePath = pathname.replace(/^\/uploads\//, "");
-  const normalizedPath = path.normalize(relativePath).replace(/^(\.\.(\/|\\|$))+/, "");
-  const uploadsRoot = getUploadsRootPath();
-  const targetPath = path.resolve(uploadsRoot, normalizedPath);
-  const resolvedRoot = path.resolve(uploadsRoot);
-
-  if (!targetPath.startsWith(resolvedRoot)) {
-    return null;
-  }
-
-  return targetPath;
-}
-
-function getContentType(filePath) {
-  return contentTypeByExtension.get(path.extname(filePath).toLowerCase()) || "application/octet-stream";
-}
-
 async function handleUploadsRequest(req, res, pathname, requestId) {
-  const filePath = getUploadsFilePath(pathname);
-  if (!filePath) {
-    json(req, res, 404, { error: "Not found" }, requestId);
-    return true;
-  }
-
   try {
-    const stat = await fs.promises.stat(filePath);
-    if (!stat.isFile()) {
-      json(req, res, 404, { error: "Not found" }, requestId);
-      return true;
-    }
+    const file = await getUploadFileByPathname(pathname);
 
     setCorsHeaders(req, res);
     res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
     res.setHeader("X-Request-Id", requestId);
-    res.setHeader("Content-Type", getContentType(filePath));
-    res.setHeader("Content-Length", stat.size);
+    res.setHeader("Content-Type", file.contentType);
+    res.setHeader("Content-Length", file.size);
     res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
     res.writeHead(200);
-    fs.createReadStream(filePath).pipe(res);
+    res.end(file.buffer);
     return true;
   } catch {
     json(req, res, 404, { error: "Not found" }, requestId);
@@ -660,7 +633,11 @@ async function handleNodeRequest(req, res) {
       req,
       res,
       500,
-      runtimeEnv.isProduction() ? { error: "Internal server error", requestId } : { error: error.message || "Internal server error", requestId },
+      {
+        error: "Internal server error",
+        requestId,
+        details: error?.message || error?.code || String(error) || "Unknown error",
+      },
       requestId,
     );
   }

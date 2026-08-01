@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
 import { AuthForm } from "@/components/dashboard/auth-form";
 import { AuthShell } from "@/components/dashboard/auth-shell";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUserSafely } from "@/lib/auth";
 import { getPublicSiteSettings } from "@/lib/site-settings";
 
 export default async function RegisterPage() {
-  const user = await getCurrentUser();
+  const user = await getCurrentUserSafely();
   if (user) redirect("/dashboard");
   let siteSettings;
 

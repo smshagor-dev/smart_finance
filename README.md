@@ -359,15 +359,29 @@ Uploads are handled by the backend and served through:
 - `/api/receipts`
 - `/api/admin/site-assets`
 
-Default storage path:
+Default local storage path:
 
 - `backend/storage/uploads`
+
+FTP storage can be enabled with environment variables:
+
+```bash
+FILE_STORAGE_DRIVER=ftp
+FTP_HOST=ftp.example.com
+FTP_PORT=21
+FTP_USER=ftp-user
+FTP_PASSWORD=ftp-password
+FTP_SECURE=false
+FTP_ROOT=smart-finance/uploads
+FTP_TIMEOUT_MS=10000
+```
 
 Files are served to the frontend through:
 
 - `/uploads/{bucket}/{filename}`
 
-For VPS or PM2 deployment, the default path is already usable as long as it stays writable and persistent.
+For VPS or PM2 deployment, local storage is usable as long as it stays writable and persistent. For serverless/Vercel, use FTP or another external persistent storage option.
+Admins can check storage connection status and ping from Dashboard admin site settings.
 
 ## Production
 

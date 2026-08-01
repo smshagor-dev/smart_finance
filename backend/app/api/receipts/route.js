@@ -1,11 +1,10 @@
-import { writeFile } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
 import { createInsertNotification, createListHandler } from "../../../lib/api.js";
 import { requireUser } from "../../../lib/auth.js";
 import { publishLiveEvent } from "../../../lib/live-events.js";
 import { prisma } from "../../../lib/prisma.js";
-import { ensureUploadDirectory, getUploadErrorMessage, getUploadUrl } from "../../../lib/uploads.js";
+import { getUploadErrorMessage, saveUploadFile } from "../../../lib/uploads.js";
 
 export const GET = createListHandler("receipts");
 
@@ -49,14 +48,12 @@ export async function POST(request) {
     const extension = path.extname(file.name) || ".bin";
     const baseName = path.basename(file.name, extension).replace(/[^a-zA-Z0-9-_]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "") || "receipt";
     const fileName = `${Date.now()}-${randomUUID()}-${baseName}${extension.toLowerCase()}`;
-    const uploadDirectory = await ensureUploadDirectory("receipts");
-    const filePath = path.join(uploadDirectory, fileName);
-    await writeFile(filePath, buffer);
+    const fileUrl = await saveUploadFile("receipts", fileName, buffer);
 
     const receipt = await prisma.receipt.create({
       data: {
         userId: user.id,
-        fileUrl: getUploadUrl("receipts", fileName),
+        fileUrl,
         fileType: file.type || "image/jpeg",
         originalName: file.name,
       },

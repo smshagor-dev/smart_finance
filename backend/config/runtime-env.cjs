@@ -4,14 +4,18 @@ const path = require("path");
 function detectRoots() {
   const appRootCandidate = path.resolve(__dirname, "..");
   const monorepoRootCandidate = path.resolve(__dirname, "..", "..");
-  const backendPackagePath = path.join(appRootCandidate, "package.json");
-  const backendServerPath = path.join(appRootCandidate, "server.js");
-  const monorepoBackendPackagePath = path.join(monorepoRootCandidate, "backend", "package.json");
+  const monorepoBackendRootCandidate = path.join(monorepoRootCandidate, "backend");
+  const backendOnlyMarkers = ["app", "config", "lib"].map((segment) => path.join(appRootCandidate, segment));
+  const monorepoBackendMarkers = ["app", "config", "lib"].map((segment) =>
+    path.join(monorepoBackendRootCandidate, segment),
+  );
+  const appRootLooksLikeBackend = backendOnlyMarkers.every((candidate) => fs.existsSync(candidate));
+  const monorepoBackendLooksValid = monorepoBackendMarkers.every((candidate) => fs.existsSync(candidate));
+  const monorepoHasFrontend = fs.existsSync(path.join(monorepoRootCandidate, "frontend"));
 
   const isBackendOnlyLayout =
-    fs.existsSync(backendPackagePath) &&
-    fs.existsSync(backendServerPath) &&
-    !fs.existsSync(monorepoBackendPackagePath);
+    appRootLooksLikeBackend &&
+    (!monorepoBackendLooksValid || !monorepoHasFrontend);
 
   if (isBackendOnlyLayout) {
     return {

@@ -3,9 +3,9 @@
   "installCommand": "npm install",
   "buildCommand": "npm run build",
   "functions": {
-    "server.js": {
+    "api/*.js": {
       "maxDuration": 300,
-      "includeFiles": "{app/**,config/**,lib/**,prisma/**,storage/uploads/**}"
+      "includeFiles": "{app/**,config/**,lib/**,prisma/**,storage/uploads/**,node_modules/.prisma/client/**,node_modules/@prisma/client/**}"
     }
   }
 }

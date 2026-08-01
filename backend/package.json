@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "node --watch server.js",
-    "build": "node scripts/run-prisma.cjs generate",
+    "build": "node scripts/generate-route-manifest.cjs && node scripts/run-prisma.cjs generate",
     "check:env": "node scripts/check-env.cjs",
     "start": "node scripts/check-env.cjs && node server.js",
     "release": "npm run check:env && npm run db:push && npm run start",
@@ -24,6 +24,7 @@
   "dependencies": {
     "@prisma/client": "^6.19.0",
     "axios": "^1.15.2",
+    "basic-ftp": "^6.0.2",
     "bcryptjs": "^3.0.3",
     "csv-stringify": "^6.7.0",
     "date-fns": "^4.1.0",

@@ -9,6 +9,10 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
+function sanitizeCustomPageContent(html) {
+  return String(html || "").replace(/<script\b/gi, "<template data-blocked-script").replace(/<\/script>/gi, "</template>");
+}
+
 function PublicCustomPageContent({ page, inDashboard = false }) {
   return (
     <div className={inDashboard ? "" : "mx-auto max-w-4xl"}>
@@ -23,7 +27,10 @@ function PublicCustomPageContent({ page, inDashboard = false }) {
           ) : null}
         </div>
 
-        <article className="custom-page-content pt-6 text-slate-700 dark:text-slate-200" dangerouslySetInnerHTML={{ __html: page.content }} />
+        <article
+          className="custom-page-content pt-6 text-slate-700 dark:text-slate-200"
+          dangerouslySetInnerHTML={{ __html: sanitizeCustomPageContent(page.content) }}
+        />
       </section>
     </div>
   );

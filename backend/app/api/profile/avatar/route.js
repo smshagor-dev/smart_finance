@@ -1,10 +1,9 @@
-import { writeFile } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
 import { requireUser } from "../../../../lib/auth.js";
 import { publishLiveEvent } from "../../../../lib/live-events.js";
 import { prisma } from "../../../../lib/prisma.js";
-import { ensureUploadDirectory, getUploadErrorMessage, getUploadUrl, removeUploadFileByUrl } from "../../../../lib/uploads.js";
+import { getUploadErrorMessage, removeUploadFileByUrl, saveUploadFile } from "../../../../lib/uploads.js";
 import { assertTrustedOrigin } from "../../../../lib/security.js";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -31,13 +30,10 @@ export async function POST(request) {
 
     const extension = path.extname(file.name) || ".jpg";
     const fileName = `${Date.now()}-${randomUUID()}${extension.toLowerCase()}`;
-    const uploadDirectory = await ensureUploadDirectory("profiles");
-    const filePath = path.join(uploadDirectory, fileName);
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    await writeFile(filePath, buffer);
-    const fileUrl = getUploadUrl("profiles", fileName);
+    const fileUrl = await saveUploadFile("profiles", fileName, buffer);
 
     await prisma.user.update({
       where: { id: user.id },

@@ -3,28 +3,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import runtimeEnv from "../config/runtime-env.cjs";
+import { GENERATED_ROUTES } from "./generated-route-manifest.js";
 import { getPrismaClient, isRetryableDatabaseError, resetPrismaClient } from "./prisma.js";
 import { runWithRequestContext } from "./request-context.js";
-import { getUploadsRoot } from "./uploads.js";
+import { getUploadFileByPathname } from "./uploads.js";
 
 const routeModuleCache = new Map();
-const contentTypeByExtension = new Map([
-  [".jpg", "image/jpeg"],
-  [".jpeg", "image/jpeg"],
-  [".png", "image/png"],
-  [".webp", "image/webp"],
-  [".gif", "image/gif"],
-  [".svg", "image/svg+xml"],
-  [".ico", "image/x-icon"],
-  [".bmp", "image/bmp"],
-  [".tiff", "image/tiff"],
-  [".pdf", "application/pdf"],
-  [".txt", "text/plain; charset=utf-8"],
-  [".doc", "application/msword"],
-  [".docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
-  [".xls", "application/vnd.ms-excel"],
-  [".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
-]);
 
 function getServerConfig() {
   runtimeEnv.ensureRuntimeEnv("backend");
@@ -33,11 +17,6 @@ function getServerConfig() {
 
 function getApiRoot() {
   return path.join(runtimeEnv.backendRoot, "app", "api");
-}
-
-function getUploadsRootPath() {
-  runtimeEnv.ensureRuntimeEnv("backend");
-  return getUploadsRoot();
 }
 
 function setSecurityHeaders(headers) {
@@ -303,7 +282,7 @@ let routesCache = null;
 
 function getRoutes() {
   if (!routesCache) {
-    routesCache = getRouteEntries(getApiRoot());
+    routesCache = GENERATED_ROUTES.length ? GENERATED_ROUTES : getRouteEntries(getApiRoot());
   }
 
   return routesCache;
@@ -345,6 +324,39 @@ function matchRoute(pathname) {
 }
 
 async function loadRouteModule(filePath) {
+  if (!path.isAbsolute(filePath)) {
+    const generatedRoute = GENERATED_ROUTES.find((route) => route.filePath === filePath);
+    if (generatedRoute?.module) {
+      return generatedRoute.module;
+    }
+
+    if (generatedRoute?.load) {
+      const cached = routeModuleCache.get(filePath);
+      if (cached) {
+        return cached.module;
+      }
+
+      try {
+        const module = await generatedRoute.load();
+        routeModuleCache.set(filePath, { module });
+        return module;
+      } catch (bundledImportError) {
+        // The bundled dynamic import can be missing when the serverless function
+        // was packaged without app/**. Fall back to the file on disk before failing.
+        const absolutePath = path.join(getApiRoot(), filePath);
+
+        if (!fs.existsSync(absolutePath)) {
+          bundledImportError.message = `Route module "${filePath}" is not available in this deployment bundle (looked for ${absolutePath}). Original error: ${bundledImportError.message}`;
+          throw bundledImportError;
+        }
+
+        const module = await import(pathToFileURL(absolutePath).href);
+        routeModuleCache.set(filePath, { module });
+        return module;
+      }
+    }
+  }
+
   const stat = fs.statSync(filePath);
   const cached = routeModuleCache.get(filePath);
 
@@ -357,49 +369,26 @@ async function loadRouteModule(filePath) {
   return module;
 }
 
-function getUploadsFilePath(pathname) {
-  const relativePath = pathname.replace(/^\/uploads\//, "");
-  const normalizedPath = path.normalize(relativePath).replace(/^(\.\.(\/|\\|$))+/, "");
-  const uploadsRoot = getUploadsRootPath();
-  const targetPath = path.resolve(uploadsRoot, normalizedPath);
-  const resolvedRoot = path.resolve(uploadsRoot);
-
-  if (!targetPath.startsWith(resolvedRoot)) {
-    return null;
-  }
-
-  return targetPath;
-}
-
-function getContentType(filePath) {
-  return contentTypeByExtension.get(path.extname(filePath).toLowerCase()) || "application/octet-stream";
-}
-
 async function handleUploadsRequest(request, pathname, requestId) {
-  const filePath = getUploadsFilePath(pathname);
-  if (!filePath) {
-    return jsonResponse(request, 404, { error: "Not found" }, requestId);
-  }
-
   try {
-    const stat = await fs.promises.stat(filePath);
-    if (!stat.isFile()) {
-      return jsonResponse(request, 404, { error: "Not found" }, requestId);
-    }
-
-    const buffer = await fs.promises.readFile(filePath);
-    return withCors(
+    const file = await getUploadFileByPathname(pathname);
+    const uploadResponse = withCors(
       request,
-      new Response(buffer, {
+      new Response(file.buffer, {
         status: 200,
         headers: {
-          "Content-Type": getContentType(filePath),
-          "Content-Length": String(stat.size),
+          "Content-Type": file.contentType,
+          "Content-Length": String(file.size),
           "Cache-Control": "public, max-age=31536000, immutable",
         },
       }),
       requestId,
     );
+
+    // Uploaded assets are embedded as <img>/<a> from the frontend origin, which is a
+    // no-cors request. "same-origin" CORP would block those, so relax it here only.
+    uploadResponse.headers.set("Cross-Origin-Resource-Policy", "cross-origin");
+    return uploadResponse;
   } catch {
     return jsonResponse(request, 404, { error: "Not found" }, requestId);
   }
@@ -483,7 +472,11 @@ export async function handleBackendRequest(request) {
     return jsonResponse(
       request,
       500,
-      runtimeEnv.isProduction() ? { error: "Internal server error", requestId } : { error: error.message || "Internal server error", requestId },
+      {
+        error: "Internal server error",
+        requestId,
+        details: error?.message || error?.code || String(error) || "Unknown error",
+      },
       requestId,
     );
   }

@@ -25,12 +25,7 @@ async function fetchProfile() {
   return response.json();
 }
 
-export async function getCurrentUser() {
-  const profile = await fetchProfile();
-  if (!profile) {
-    return null;
-  }
-
+function mapProfileToUser(profile) {
   return {
     id: profile.id,
     name: profile.name,
@@ -49,6 +44,23 @@ export async function getCurrentUser() {
     createdAt: profile.createdAt,
     updatedAt: profile.updatedAt,
   };
+}
+
+export async function getCurrentUser() {
+  const profile = await fetchProfile();
+  if (!profile) {
+    return null;
+  }
+
+  return mapProfileToUser(profile);
+}
+
+export async function getCurrentUserSafely() {
+  try {
+    return await getCurrentUser();
+  } catch {
+    return null;
+  }
 }
 
 export async function requireUser() {

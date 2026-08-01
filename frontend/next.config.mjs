@@ -1,3 +1,6 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 function normalizeLoopbackUrl(value) {
   if (!value) {
     return value;
@@ -14,13 +17,29 @@ function normalizeLoopbackUrl(value) {
   }
 }
 
-const apiBaseUrl = normalizeLoopbackUrl(process.env.NEXT_PUBLIC_API_BASE_URL);
+const apiBaseUrl = normalizeLoopbackUrl(
+  process.env.NEXT_PUBLIC_API_BASE_URL || process.env.INTERNAL_API_BASE_URL,
+);
 const isProduction = process.env.NODE_ENV === "production";
+
+// Every client-side call in this app is a same-origin request to /api/* that only
+// works because of the rewrites below. Building without an API base URL silently
+// ships an app where every request 404s, so fail the build instead.
+if (isProduction && !apiBaseUrl) {
+  throw new Error(
+    "NEXT_PUBLIC_API_BASE_URL must be set at build time; without it the /api/* and /uploads/* rewrites are dropped and every API call returns 404.",
+  );
+}
+const frontendRoot = path.dirname(fileURLToPath(import.meta.url));
+const workspaceRoot = path.resolve(frontendRoot, "..");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   poweredByHeader: false,
   output: "standalone",
+  turbopack: {
+    root: workspaceRoot,
+  },
   async headers() {
     return [
       {

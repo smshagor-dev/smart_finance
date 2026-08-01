@@ -1,8 +1,7 @@
-import { writeFile } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
 import { requireUser } from "../../../../lib/auth.js";
-import { ensureUploadDirectory, getUploadErrorMessage, getUploadUrl } from "../../../../lib/uploads.js";
+import { getUploadErrorMessage, saveUploadFile } from "../../../../lib/uploads.js";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_FILE_TYPES = new Set([
@@ -41,15 +40,13 @@ export async function POST(request) {
 
     const extension = path.extname(file.name) || ".bin";
     const fileName = `${Date.now()}-${randomUUID()}${extension.toLowerCase()}`;
-    const uploadDirectory = await ensureUploadDirectory("attachments");
-    const filePath = path.join(uploadDirectory, fileName);
 
     const bytes = await file.arrayBuffer();
-    await writeFile(filePath, Buffer.from(bytes));
+    const fileUrl = await saveUploadFile("attachments", fileName, Buffer.from(bytes));
 
     return Response.json({
       success: true,
-      fileUrl: getUploadUrl("attachments", fileName),
+      fileUrl,
       originalName: file.name,
       fileType: file.type || "application/octet-stream",
     });
