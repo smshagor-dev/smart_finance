@@ -96,11 +96,15 @@ export async function GET(request) {
       }),
     ]);
 
+    const previousMonthIncome = toNumber(previousIncome._sum.convertedAmount);
+    const previousMonthExpense = toNumber(previousExpense._sum.convertedAmount);
+    const previousMonthLabel = format(previousMonthStart, "MMM");
+
     const monthComparison = [
       {
-        month: format(previousMonthStart, "MMM"),
-        income: toNumber(previousIncome._sum.convertedAmount),
-        expense: toNumber(previousExpense._sum.convertedAmount),
+        month: previousMonthLabel,
+        income: previousMonthIncome,
+        expense: previousMonthExpense,
       },
       {
         month: format(currentMonthStart, "MMM"),
@@ -186,6 +190,9 @@ export async function GET(request) {
         totalIncome,
         totalExpense,
         monthlySavings: totalIncome - totalExpense,
+        previousMonthIncome,
+        previousMonthExpense,
+        previousMonthLabel,
         currencyCode: defaultCurrency?.code || "USD",
         currencySymbol: defaultCurrency?.symbol || "$",
         incomeByCategory,
