@@ -90,6 +90,9 @@ export function DashboardHome() {
     totalIncome: data.stats?.totalIncome ?? 0,
     totalExpense: data.stats?.totalExpense ?? 0,
     monthlySavings: data.stats?.monthlySavings ?? 0,
+    previousMonthIncome: data.stats?.previousMonthIncome ?? data.stats?.monthComparison?.[0]?.income ?? 0,
+    previousMonthExpense: data.stats?.previousMonthExpense ?? data.stats?.monthComparison?.[0]?.expense ?? 0,
+    previousMonthLabel: data.stats?.previousMonthLabel || data.stats?.monthComparison?.[0]?.month || "Previous month",
     currencyCode: data.stats?.currencyCode || "USD",
     incomeByCategory: data.stats?.incomeByCategory || [],
     expenseByCategory: data.stats?.expenseByCategory || [],
@@ -125,6 +128,23 @@ export function DashboardHome() {
           <MetricCard label="Income" value={formatCurrency(stats.totalIncome, stats.currencyCode)} hint="This month" accent="bg-green-600" icon={ArrowUpRight} />
           <MetricCard label="Expense" value={formatCurrency(stats.totalExpense, stats.currencyCode)} hint="This month" accent="bg-red-600" icon={ArrowDownRight} />
           <MetricCard label="Savings" value={formatCurrency(stats.monthlySavings, stats.currencyCode)} hint="Net this month" accent="bg-blue-600" icon={PiggyBank} />
+        </section>
+
+        <section className="grid grid-cols-1 gap-3 min-[390px]:gap-4 sm:grid-cols-2">
+          <MetricCard
+            label="Last Month Income"
+            value={formatCurrency(stats.previousMonthIncome, stats.currencyCode)}
+            hint={`${stats.previousMonthLabel} total`}
+            accent="bg-green-600"
+            icon={ArrowUpRight}
+          />
+          <MetricCard
+            label="Last Month Expenses"
+            value={formatCurrency(stats.previousMonthExpense, stats.currencyCode)}
+            hint={`${stats.previousMonthLabel} total`}
+            accent="bg-red-600"
+            icon={ArrowDownRight}
+          />
         </section>
 
         <OverviewCharts
